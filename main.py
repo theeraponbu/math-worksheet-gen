@@ -1,30 +1,33 @@
 import streamlit as st
+import speed_math
+import fraction_factory
 
-# ตั้งค่าหน้ากระดาษให้ดูเป็นมืออาชีพ
-st.set_page_config(page_title="MathPrepAI Workspace", layout="wide")
+# UI Configuration
+st.set_page_config(page_title="MathPrepAI Workspace", layout="wide", page_icon="🎓")
 
-# ส่วนของแถบเมนูด้านข้าง
-st.sidebar.image("https://mathprepai.com/wp-content/uploads/logo.png", width=200) # ใส่ลิงก์โลโก้เว็บอาจารย์
-st.sidebar.title("🛠️ เมนูเครื่องมือ")
-choice = st.sidebar.radio("เลือกแอปที่ต้องการใช้งาน:", 
-                         ["🏠 หน้าแรก", "🧩 Fraction Factory", "⚡ Speed Math (Coming Soon)"])
+# Professional Sidebar
+st.sidebar.title("🎓 MathPrepAI Global")
+st.sidebar.markdown("---")
+menu = st.sidebar.radio(
+    "SELECT TOOL:",
+    ["🏠 Home", "⚡ Speed Math Drills", "🧩 Fraction Factory"]
+)
 
-# --- ตรรกะการเลือกหน้า ---
-if choice == "🏠 หน้าแรก":
-    st.title("ยินดีต้อนรับสู่ MathPrepAI Pro Workspace")
-    st.write("กรุณาเลือกเครื่องมือที่แถบด้านซ้ายเพื่อเริ่มต้นสร้างใบงานครับ")
+if menu == "🏠 Home":
+    st.title("Welcome to MathPrepAI Pro Workspace")
+    st.markdown("""
+    ### Empowering Educators Globally
+    Select a module from the sidebar to begin generating professional math resources.
+    """)
     
-    # โชว์ Card แนะนำสั้นๆ
     col1, col2 = st.columns(2)
     with col1:
-        st.info("🧩 **Fraction Factory**: สร้างรูปภาพเศษส่วนและใบงาน")
+        st.info("#### ⚡ Speed Math Drills\nCreate timed arithmetic worksheets with customizable difficulty levels.")
     with col2:
-        st.warning("⚡ **Speed Math**: สร้างโจทย์คิดเลขเร็ว (เร็วๆ นี้)")
+        st.success("#### 🧩 Fraction Factory\nGenerate visual fraction models (Circle & Bar) for conceptual teaching.")
 
-elif choice == "🧩 Fraction Factory":
-    # เรียกไฟล์แอปเศษส่วนมาแสดง
-    try:
-        import fraction_factory
-        # ถ้าอาจารย์ปรับโค้ดใน fraction_factory เป็นฟังก์ชัน ก็เรียกใช้ที่นี่ครับ
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาดในการโหลดแอป: {e}")
+elif menu == "⚡ Speed Math Drills":
+    speed_math.run_app()
+
+elif menu == "🧩 Fraction Factory":
+    fraction_factory.run_app()
