@@ -10,7 +10,13 @@ st.sidebar.title("🎓 MathPrepAI Global")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio(
     "SELECT TOOL:",
-    ["🏠 Home", "⚡ Speed Math Drills", "🧩 Fraction Factory", "📐 Shape Master", "📉 Graphing Notebook", "🕒 Time & Clock"]
+    ["🏠 Home", 
+     "⚡ Speed Math Drills", 
+     "🧩 Fraction Factory", 
+     "📐 Shape Master", 
+     "📉 Graphing Notebook", 
+     "🕒 Time & Clock",
+     "📑 PDF Editor"]
 )
 
 if menu == "🏠 Home":
@@ -43,3 +49,7 @@ elif menu == "📉 Graphing Notebook":
 elif menu == "🕒 Time & Clock":
     import clock_generator
     clock_generator.run_app()
+
+elif menu == "📑 PDF Editor":
+    import pdf_editor
+    pdf_editor.run_app()
