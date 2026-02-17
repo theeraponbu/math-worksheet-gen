@@ -4,7 +4,7 @@ from fpdf import FPDF
 import io
 import os
 
-# --- 1. PDF ENGINE (HIGH PRECISION) ---
+# --- 1. PDF ENGINE (HIGH FIDELITY) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
@@ -15,11 +15,11 @@ class GlobalMathPDF(FPDF):
             "Roboto": ("Roboto-Regular.ttf", "Roboto-Bold.ttf"),
             "Lora": ("Lora-Regular.ttf", "Lora-Bold.ttf")
         }
-        reg, bold = font_files[font_name]
-        reg_p, bold_p = f"fonts/{reg}", f"fonts/{bold}"
+        reg, bld = font_files[font_name]
+        reg_p, bld_p = f"fonts/{reg}", f"fonts/{bld}"
         if not os.path.exists(reg_p): return False
         self.add_font(font_name, '', reg_p)
-        self.add_font(font_name, 'B', bold_p)
+        self.add_font(font_name, 'B', bld_p)
         return True
 
     def draw_page(self, title, school, teacher, problems, f_size, scale, f_name, is_key=False):
@@ -43,7 +43,7 @@ class GlobalMathPDF(FPDF):
             self.set_font(f_name, 'B', f_size)
             self.set_xy(x+5, y); self.cell(20, 10, f"{p['a']:>3}", align='R', ln=True)
             self.set_xy(x+5, y+8); self.cell(20, 10, f"+ {p['b']:>2}", align='R', ln=True)
-            # เส้นคั่นปลายขวาตรงหลักหน่วย
+            # ปรับเส้นให้ปลายขวาตรงหลักหน่วยเหมือนหน้าจอ
             self.line(x+10, y+19, x+25, y+19)
             if is_key:
                 self.set_text_color(220, 0, 0)
@@ -69,33 +69,35 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. THE TABLE-BASED PREVIEW (FIXED VISUALS) ---
+    # --- 3. THE REFINED PREVIEW (BUG FIX) ---
     st.subheader("📄 Live Designer Preview")
     font_css = "'Courier Prime', monospace" if font_style == "CourierPrime" else font_style
     
+    # รวบรวม HTML โจทย์ทีละข้อ
     prob_html_list = []
     for i, p in enumerate(st.session_state.current_math):
-        # ใช้ Table เพื่อบังคับเครื่องหมายบวกให้อยู่ซ้ายสุดและวางบนเส้นพอดี
         item = f"""
-        <div style="width: 100px; margin-bottom: 20px; font-family: {font_css}; color: black; position: relative;">
-            <span style="position: absolute; left: -10px; top: 0; font-size: 10px; color: #888;">{i+1})</span>
-            <table style="width: 70px; margin-left: auto; border-collapse: collapse; font-weight: bold; font-size: {f_size}px;">
+        <div style="width: 100px; margin-bottom: 25px; font-family: {font_css}; color: black; position: relative;">
+            <span style="position: absolute; left: -10px; top: 0; font-size: 10px; color: #888; font-weight: normal;">{i+1})</span>
+            <table style="width: 75px; margin-left: auto; border-collapse: collapse; font-weight: bold; font-size: {f_size}px; line-height: 1.1;">
                 <tr><td colspan="2" style="text-align: right; padding-right: 5px;">{p['a']}</td></tr>
                 <tr style="border-bottom: 3px solid black;">
-                    <td style="text-align: left; width: 20px; vertical-align: bottom;">+</td>
-                    <td style="text-align: right; padding-right: 5px;">{p['b']}</td>
+                    <td style="text-align: left; width: 25px; vertical-align: bottom; padding-bottom: 2px;">+</td>
+                    <td style="text-align: right; padding-right: 5px; padding-bottom: 2px;">{p['b']}</td>
                 </tr>
             </table>
         </div>
         """
         prob_html_list.append(item)
     
-    all_probs_html = "".join(prob_html_list)
+    # รวมโจทย์ทั้งหมดและปิด Tag </div> สุดท้ายให้เรียบร้อย
+    all_probs_joined = "".join(prob_html_list)
     aspect = 1.29 if paper == "Letter" else 1.41
     
-    st.write(f"""
+    # หุ้มด้วย div ใบงานเพียงใบเดียวเพื่อความเสถียร
+    full_preview_html = f"""
     <div style="width: 750px; height: {750 * aspect}px; background: white; border: 1px solid #ddd; padding: 50px; color: black; margin: auto; overflow: hidden;">
-        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 30px; font-family: sans-serif;">
+        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 30px; font-family: Arial, sans-serif;">
             <h2 style="margin: 0; font-size: 22px;">{school.upper()}</h2>
             <h1 style="margin: 10px 0; font-size: 36px;">{title}</h1>
             <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; color: #444;">
@@ -104,10 +106,11 @@ def run_app():
             </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; transform: scale({scale/100}); transform-origin: top center;">
-            {all_probs_html}
+            {all_probs_joined}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.write(full_preview_html, unsafe_allow_html=True)
 
     # --- 4. EXPORT ---
     st.markdown("---")
