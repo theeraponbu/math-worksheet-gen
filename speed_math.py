@@ -4,14 +4,13 @@ from fpdf import FPDF
 import io
 import os
 
-# --- 1. PDF ENGINE (HIGH STABILITY) ---
+# --- 1. PDF ENGINE (STABLE LOCAL FONT & PRECISE ALIGNMENT) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
         
     def setup_fonts(self, font_name):
-        """ดึงฟอนต์จากโฟลเดอร์ fonts โดยใช้ไฟล์ Static เพื่อป้องกัน Error"""
-        # ปรับชื่อไฟล์ให้ตรงตามไฟล์ Static ที่คุณอัปโหลดใน GitHub เป๊ะๆ
+        """ดึงฟอนต์จากโฟลเดอร์ fonts ใน GitHub/Host ของอาจารย์โดยตรง"""
         font_files = {
             "CourierPrime": ("CourierPrime-Regular.ttf", "CourierPrime-Bold.ttf"),
             "Roboto": ("Roboto-Regular.ttf", "Roboto-Bold.ttf"),
@@ -22,12 +21,10 @@ class GlobalMathPDF(FPDF):
         reg_path = f"fonts/{reg_name}"
         bold_path = f"fonts/{bold_name}"
 
-        # ตรวจสอบไฟล์ก่อนโหลด
         if not os.path.exists(reg_path) or not os.path.exists(bold_path):
-            st.error(f"⚠️ ไม่พบไฟล์ {reg_name} หรือ {bold_name} ในโฟลเดอร์ fonts")
+            st.error(f"⚠️ ไม่พบไฟล์ {reg_name} ในโฟลเดอร์ /fonts กรุณาตรวจสอบบน GitHub")
             return False
 
-        # โหลดฟอนต์ (ตัด Parameter unicode=True ออกเพื่อรองรับ fpdf2 เวอร์ชันใหม่)
         self.add_font(font_name, '', reg_path)
         self.add_font(font_name, 'B', bold_path)
         return True
@@ -44,8 +41,9 @@ class GlobalMathPDF(FPDF):
         
         # Info row
         self.set_font(font_name, '', 10)
-        self.cell((self.w-20)/2, 10, f"Teacher: {teacher}", ln=False)
-        self.cell((self.w-20)/2, 10, "Name: _________________ Score: ____", ln=True, align='R')
+        w = self.w - 20
+        self.cell(w/2, 10, f"Teacher: {teacher}", ln=False)
+        self.cell(w/2, 10, "Name: _________________ Score: ____", ln=True, align='R')
         self.set_line_width(0.5)
         self.line(10, 48, self.w - 10, 48)
         self.ln(10)
@@ -53,7 +51,7 @@ class GlobalMathPDF(FPDF):
         # Grid logic
         col_w = (self.w - 30) / 4
         row_h = 35 * (scale/100)
-        self.set_line_width(0.6) # ความหนาเส้นคั่น
+        self.set_line_width(0.6)
         
         for idx, p in enumerate(problems):
             x = 15 + (idx % 4) * col_w
@@ -72,22 +70,20 @@ class GlobalMathPDF(FPDF):
             self.set_xy(x + 5, y + 8)
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
             
-            # 3. ปรับเส้นคั่นให้ปลายขวาตรงกับหลักหน่วยเป๊ะ
-            # เราใช้ x + 25 เป็นจุดสิ้นสุดเพื่อให้ตรงกับขอบขวาของ Cell ที่เราตั้งไว้ 20mm
-            # และเริ่มวาดจาก x + 7 เพื่อให้เส้นมีความยาวคลุมเครื่องหมายบวกและตัวเลข
-            self.set_line_width(0.6)
-            self.line(x + 7, y + 19, x + 25, y + 19) 
+            # 3. เส้นคั่นโจทย์ (ปลายขวาตรงกับหลักหน่วยเป๊ะ)
+            # เริ่มวาดจาก x+7 เพื่อให้คลุมเครื่องหมายบวก และจบที่ x+25 เพื่อให้ตรงขอบขวาตัวเลข
+            self.line(x + 7, y + 19, x + 25, y + 19)
 
-            # 4. เขียนคำตอบ (ขยับลงมาให้โปร่ง สวยงาม ไม่ติดเส้น)
+            # 4. เขียนคำตอบ (เฉพาะหน้าเฉลย) - ขยับลงมาให้โปร่ง สวยงาม
             if is_answer_key:
                 self.set_text_color(220, 0, 0) # สีแดงคมชัด
-                self.set_xy(x + 5, y + 21) # ขยับลงมาเป็น +21 เพื่อความสวยงามระดับพรีเมียม
+                self.set_xy(x + 5, y + 21) # ขยับลงมาไม่ให้เบียดเส้น
                 self.cell(20, 10, f"{p['a'] + p['b']:>3}", ln=True, align='R')
                 self.set_text_color(0, 0, 0)
 
 # --- 2. MAIN APP ---
 def run_app():
-    # ใช้ CSS ดึง Google Fonts สำหรับ Preview หน้าจอ
+    # โหลด CSS สำหรับ Preview
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&family=Roboto:wght@700&family=Lora:wght@700&display=swap');
@@ -95,31 +91,30 @@ def run_app():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("⚡ Speed Math Pro: Answer Key Engine")
+    st.title("⚡ Speed Math Pro: Enterprise Designer")
     
     with st.sidebar:
         st.header("📄 Page Setup")
-        paper_size = st.selectbox("Format", ["Letter", "A4"])
-        font_choice = st.selectbox("Font Style", ["CourierPrime", "Roboto", "Lora"])
-        content_scale = st.slider("Scale (%)", 70, 130, 100)
-        num_probs = st.slider("Problems", 12, 48, 24)
-        font_size = st.slider("Font Size", 16, 32, 24)
+        paper_size = st.selectbox("Paper Size", ["Letter", "A4"])
+        font_choice = st.selectbox("Select Font Style", ["CourierPrime", "Roboto", "Lora"])
+        content_scale = st.slider("Content Scale (%)", 70, 130, 100)
+        num_probs = st.slider("Problems per Page", 12, 48, 24)
+        font_size = st.slider("Math Font Size", 16, 32, 24)
         
         st.header("🏫 Branding")
-        school = st.text_input("School", "GLOBAL ACADEMY")
+        school = st.text_input("School Name", "GLOBAL ACADEMY")
         teacher = st.text_input("Teacher", "Mr. Smith")
-        ws_title = st.text_input("Title", "Vertical Addition")
+        ws_title = st.text_input("Worksheet Title", "Vertical Addition")
 
-    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
+    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Problems"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. LIVE DESIGNER PREVIEW (ปรับจูนความสวยงามให้ตรงกับ PDF) ---
+    # --- 3. LIVE DESIGNER PREVIEW (ปรับจูน CSS ให้เป๊ะเหมือน PDF) ---
     css_fonts = {"CourierPrime": "'Courier Prime'", "Roboto": "'Roboto'", "Lora": "'Lora'"}
     current_css = css_fonts[font_choice]
     
     problems_html = ""
     for i, p in enumerate(st.session_state.current_math):
-        # ปรับ CSS: ขยับเครื่องหมาย + ไปซ้ายสุด และลดความกว้างเส้นคั่น
         problems_html += f"""
         <div style="text-align:right; font-size:{font_size}px; font-family:{current_css}; font-weight:bold; width:100px; margin:auto; margin-bottom:25px; position:relative;">
             <span style="position:absolute; left:-10px; top:0; font-size:12px; color:#888; font-weight:normal;">{i+1})</span>
@@ -132,8 +127,8 @@ def run_app():
         """
 
     aspect = 1.29 if paper_size == "Letter" else 1.41
-    st.write(f"""
-    <div style="width:720px; height:{720 * aspect}px; background:white; margin:auto; border:1px solid #ddd; box-shadow:0 10px 25px rgba(0,0,0,0.05); padding:50px; color:black; overflow:hidden; font-family:{current_css};">
+    preview_container = f"""
+    <div style="width:720px; height:{720 * aspect}px; background:white; margin:auto; border:1px solid #ddd; border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.05); padding:50px; color:black; overflow:hidden; font-family:{current_css};">
         <div style="text-align:center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:20px;">
             <div style="font-weight:bold; font-size:18px;">{school.upper()}</div>
             <div style="font-weight:bold; font-size:32px; margin:15px 0;">{ws_title}</div>
@@ -143,25 +138,28 @@ def run_app():
             </div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:25px; transform:scale({content_scale/100}); transform-origin:top center;">
-            {problems_html}
+            {all_problems_html if 'all_problems_html' in locals() else problems_html}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.write(preview_container, unsafe_allow_html=True)
 
-    # --- 4. DOWNLOAD SYSTEM ---
+    # --- 4. DOWNLOAD SYSTEM (WITH ANSWER KEY) ---
     st.markdown("---")
     pdf = GlobalMathPDF(format=paper_size)
     try:
         if pdf.setup_fonts(font_choice):
+            # หน้าที่ 1: โจทย์
             pdf.draw_page(ws_title, school, teacher, st.session_state.current_math, font_size, content_scale, font_choice, False)
+            # หน้าที่ 2: เฉลย
             pdf.draw_page(ws_title, school, teacher, st.session_state.current_math, font_size, content_scale, font_choice, True)
             
             pdf_bytes = bytes(pdf.output())
-            st.download_button(label="📥 Download PDF (Worksheet + Answer Key)", 
+            st.download_button(label="📥 Download Worksheet + Answer Key (PDF)", 
                                data=pdf_bytes, 
                                file_name=f"{ws_title}.pdf", 
                                mime="application/pdf")
-            st.success("✅ PDF สร้างสำเร็จด้วยฟอนต์แบบ Static!")
+            st.success("✅ ระบบสร้างไฟล์ PDF พร้อมใช้งาน (1 หน้าโจทย์ + 1 หน้าเฉลย)")
     except Exception as e:
         st.error(f"Engine Error: {e}")
 
