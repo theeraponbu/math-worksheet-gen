@@ -43,12 +43,9 @@ class GlobalMathPDF(FPDF):
             
             self.set_font('Helvetica', 'B', font_size)
             self.set_xy(x + 5, y)
-            # แสดงเลขตัวตั้ง
             self.cell(20, 10, f"{p['a']:>3}", ln=True, align='R')
             self.set_xy(x + 5, y + 8)
-            # แสดงเครื่องหมาย + และเลขตัวบวก
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
-            # วาดเส้นคำตอบ
             self.line(x + 10, y + 18, x + 28, y + 18)
 
 # --- 2. MAIN APP ---
@@ -84,10 +81,9 @@ def run_app():
     aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     preview_width = 700 
     
-    # รวบรวมโจทย์ทั้งหมดเข้าด้วยกันก่อน (ไม่มีเศษ </div> หลุดรอด)
+    # รวบรวมโจทย์ทั้งหมดเข้าด้วยกันก่อน เพื่อป้องกัน Tag หลุด
     all_problems_content = ""
     for i, p in enumerate(st.session_state.current_math):
-        # สร้างก้อนโจทย์แต่ละก้อน
         single_problem = f"""
         <div style="text-align: right; font-size: {font_size}px; font-family: 'Courier New', monospace; margin-bottom: 20px;">
             <span style="float: left; font-size: 12px; color: gray;">{i+1})</span>
@@ -98,7 +94,7 @@ def run_app():
         """
         all_problems_content += single_problem
 
-    # แสดงผลใบงานจำลองแบบ A4/Letter
+    # แสดงผลใบงานจำลอง
     st.markdown(f"""
         <div style="
             width: {preview_width}px; 
@@ -119,7 +115,6 @@ def run_app():
                     <span>Name: ________________ Score: ____</span>
                 </div>
             </div>
-            
             <div style="
                 display: grid; 
                 grid-template-columns: repeat(4, 1fr); 
@@ -128,39 +123,6 @@ def run_app():
                 transform-origin: top center;
             ">
                 {all_problems_content}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # แสดงผลหน้ากระดาษจำลองด้วย st.markdown
-    st.markdown(f"""
-        <div style="
-            width: {preview_width}px; 
-            height: {preview_width * aspect_ratio}px; 
-            background: white; 
-            margin: auto; 
-            border: 1px solid #ddd; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 40px;
-            color: black;
-            overflow: hidden;
-        ">
-            <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                <div style="font-weight: bold; font-size: 18px; font-family: Arial;">{school.upper()}</div>
-                <div style="font-weight: bold; font-size: 26px; margin: 10px 0; font-family: Arial;">{ws_title}</div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-family: Arial;">
-                    <span>Teacher: {teacher}</span>
-                    <span>Name: ________________ Score: ____</span>
-                </div>
-            </div>
-            <div style="
-                display: grid; 
-                grid-template-columns: repeat(4, 1fr); 
-                gap: 25px;
-                transform: scale({content_scale/100});
-                transform-origin: top center;
-            ">
-                {problems_html}
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -188,6 +150,5 @@ def run_app():
     except Exception as e:
         st.error(f"Engine Error: {e}")
 
-# ส่วนท้ายไฟล์ (ถ้าต้องการรันแยกไฟล์)
 if __name__ == "__main__":
     run_app()
