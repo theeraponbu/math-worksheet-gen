@@ -75,69 +75,54 @@ def run_app():
             for _ in range(num_probs)
         ]
 
-    # --- 3. LIVE DESIGNER PREVIEW (FINAL CLEANUP) ---
+    # --- 3. LIVE DESIGNER PREVIEW (FIXED HTML) ---
     st.subheader("📄 Live Designer Preview")
     
     aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     preview_width = 700 
     
-    # รวบรวมโจทย์ทั้งหมดเข้าด้วยกันก่อน เพื่อป้องกัน Tag หลุด
-    all_problems_content = ""
+    # รวบรวมโจทย์แบบป้องกันเศษ Tag หลุด (ใช้ list และ join)
+    problems_list = []
     for i, p in enumerate(st.session_state.current_math):
-        single_problem = f"""
-        <div style="text-align: right; font-size: {font_size}px; font-family: 'Courier New', monospace; margin-bottom: 20px;">
-            <span style="float: left; font-size: 12px; color: gray;">{i+1})</span>
-            {p['a']}<br>
-            +{p['b']}<br>
-            <hr style="border: 1px solid black; margin: 3px 0;">
-        </div>
-        """
-        all_problems_content += single_problem
+        item = (
+            f'<div style="text-align:right; font-size:{font_size}px; font-family:monospace; margin-bottom:20px;">'
+            f'<span style="float:left; font-size:12px; color:gray;">{i+1})</span>'
+            f'{p["a"]}<br>+{p["b"]}<br>'
+            f'<hr style="border:1px solid black; margin:3px 0;">'
+            f'</div>'
+        )
+        problems_list.append(item)
+    
+    all_problems_html = "".join(problems_list)
 
-    # แสดงผลใบงานจำลอง
-    st.markdown(f"""
-        <div style="
-            width: {preview_width}px; 
-            height: {preview_width * aspect_ratio}px; 
-            background: white; 
-            margin: auto; 
-            border: 1px solid #ddd; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 40px;
-            color: black;
-            overflow: hidden;
-        ">
-            <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                <div style="font-weight: bold; font-size: 18px; font-family: Arial;">{school.upper()}</div>
-                <div style="font-weight: bold; font-size: 26px; margin: 10px 0; font-family: Arial;">{ws_title}</div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-family: Arial;">
-                    <span>Teacher: {teacher}</span>
-                    <span>Name: ________________ Score: ____</span>
-                </div>
-            </div>
-            <div style="
-                display: grid; 
-                grid-template-columns: repeat(4, 1fr); 
-                gap: 25px;
-                transform: scale({content_scale/100});
-                transform-origin: top center;
-            ">
-                {all_problems_content}
+    # แสดงผลใบงานจำลองแบบ A4/Letter
+    # ใช้ f-string แบบระมัดระวังที่สุดเพื่อไม่ให้ Tag ปิดหลุดออกมา
+    canvas_html = f"""
+    <div style="width:{preview_width}px; height:{preview_width * aspect_ratio}px; background:white; margin:auto; border:1px solid #ddd; box-shadow:0 4px 15px rgba(0,0,0,0.1); padding:40px; color:black; overflow:hidden;">
+        <div style="text-align:center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:20px;">
+            <div style="font-weight:bold; font-size:18px; font-family:Arial;">{school.upper()}</div>
+            <div style="font-weight:bold; font-size:26px; margin:10px 0; font-family:Arial;">{ws_title}</div>
+            <div style="display:flex; justify-content:space-between; font-size:14px; font-family:Arial;">
+                <span>Teacher: {teacher}</span>
+                <span>Name: ________________ Score: ____</span>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:25px; transform:scale({content_scale/100}); transform-origin:top center;">
+            {all_problems_html}
+        </div>
+    </div>
+    """
+    
+    st.markdown(canvas_html, unsafe_allow_html=True)
 
     # --- 4. DOWNLOAD SYSTEM ---
     st.markdown("---")
     
-    # สร้าง PDF Object
     pdf = GlobalMathPDF(format=paper_size)
     pdf.draw_page(ws_title, school, teacher, st.session_state.current_math, font_size, content_scale)
     
     try:
-        # แปลงเป็นไบนารีและส่งให้ปุ่มดาวน์โหลด
         pdf_bytes = bytes(pdf.output())
-        
         st.download_button(
             label="📥 Download Professional PDF",
             data=pdf_bytes,
@@ -146,7 +131,6 @@ def run_app():
             key="speed_math_final_dl"
         )
         st.success("✅ Professional PDF is ready for download!")
-        
     except Exception as e:
         st.error(f"Engine Error: {e}")
 
