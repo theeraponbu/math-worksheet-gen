@@ -1,94 +1,155 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import random
+import io
 
+# --- 1. ENGINE: ฟังก์ชันวาดรูป (รองรับทั้งรูปเดียวและตาราง) ---
+def draw_fraction_circle(num, den, color='#3b82f6', size=(3, 3)):
+    fig, ax = plt.subplots(figsize=size)
+    ax.pie([1]*den, colors=[color if i < num else '#ffffff' for i in range(den)], 
+           startangle=90, wedgeprops={'edgecolor': 'black', 'linewidth': 1.2})
+    plt.axis('off')
+    return fig
+
+def draw_fraction_grid(num_items, color):
+    # คำนวณแถวและคอลัมน์ (Max 2 คอลัมน์สำหรับ A4)
+    rows = (num_items + 1) // 2
+    fig, axes = plt.subplots(rows, 2, figsize=(8, 3 * rows))
+    axes = axes.flatten()
+    
+    answers = []
+    for i in range(num_items):
+        d = random.randint(2, 12)
+        n = random.randint(1, d)
+        answers.append(f"Q{i+1}: {n}/{d}")
+        
+        axes[i].pie([1]*d, colors=[color if j < n else '#ffffff' for j in range(d)], 
+                    startangle=90, wedgeprops={'edgecolor': 'black', 'linewidth': 1})
+        axes[i].set_title(f"Question {i+1}", fontsize=10)
+    
+    # ซ่อนแกนที่ไม่ได้ใช้
+    for j in range(num_items, len(axes)):
+        axes[j].axis('off')
+        
+    plt.tight_layout()
+    return fig, answers
+
+# --- 2. MAIN APP FUNCTION ---
 def run_app():
     tier = st.session_state.get('tier', "Free Tier (Teaching Only)")
+    is_pro = tier != "Free Tier (Teaching Only)"
+    is_commercial = tier == "Commercial Enterprise (Full Access)"
     
-    st.title("🧩 Fraction Factory: Ultimate")
+    st.title("🧩 Fraction Factory: Ultimate Pro")
 
-    # --- SETUP GOOGLE FONTS (CSS) ---
+    # --- SETUP FONTS ---
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Comic+Neue:wght@700&family=Lexend:wght@400;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Patrick+Hand&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Comic+Neue:wght@700&family=Lexend:wght@400;700&family=Patrick+Hand&display=swap');
         </style>
     """, unsafe_allow_html=True)
 
-    col_config, col_preview = st.columns([1, 1.2])
+    fonts = {
+        "Standard": "sans-serif",
+        "Montserrat": "'Montserrat', sans-serif",
+        "Comic Neue": "'Comic Neue', cursive",
+        "Patrick Hand": "'Patrick Hand', cursive",
+        "Lexend": "'Lexend', sans-serif"
+    }
+
+    # --- SIDEBAR: DESIGN & LOGIC ---
+    with st.sidebar:
+        st.header("🎨 Worksheet Design")
+        
+        # โหมดการจัดหน้า (Pro Only)
+        if is_pro:
+            layout_mode = st.radio("Layout Mode", ["Single (Slide)", "Grid (Worksheet)"])
+            num_probs = st.slider("Problems per page", 4, 12, 6) if layout_mode == "Grid (Worksheet)" else 1
+            selected_font = st.selectbox("Font Style", list(fonts.keys()))
+            font_color = st.color_picker("Brand Color", "#3b82f6")
+        else:
+            st.info("🔒 Grid Mode & Custom Fonts are Pro Features")
+            layout_mode = "Single (Slide)"
+            num_probs = 1
+            selected_font = "Standard"
+            font_color = "#1e293b"
+
+    # --- MAIN INTERFACE ---
+    col_config, col_preview = st.columns([1, 1.5])
 
     with col_config:
-        st.subheader("🔠 Typography & Style")
-        
-        # คลังฟอนต์ยอดนิยม 10 แบบ
-        fonts = {
-            "Standard (Sans-Serif)": "sans-serif",
-            "Montserrat (Modern)": "'Montserrat', sans-serif",
-            "Playfair (Academic)": "'Playfair Display', serif",
-            "Comic Neue (Friendly)": "'Comic Neue', cursive",
-            "Patrick Hand (Handwriting)": "'Patrick Hand', cursive",
-            "Lexend (Dyslexia Friendly)": "'Lexend', sans-serif"
-        }
-
-        # การคุมสิทธิ์เข้าถึงฟอนต์
-        if tier == "Free Tier (Teaching Only)":
-            selected_font = st.selectbox("Font Style (Free: Standard only)", ["Standard (Sans-Serif)"])
-            font_size = 24
-            font_color = "#1e293b"
-            st.caption("🔒 Upgrade to Pro to unlock 10+ Premium Fonts & Colors")
+        st.subheader("🔢 Content Settings")
+        if layout_mode == "Single (Slide)":
+            den = st.number_input("Denominator", 1, 12, 4)
+            num = st.number_input("Numerator", 0, den, 1)
+            ws_title = st.text_input("Title", "Fraction Fun")
         else:
-            selected_font = st.selectbox("Select Font Style", list(fonts.keys()))
-            font_size = st.slider("Heading Size", 18, 48, 28)
-            font_color = st.color_picker("Text Color", "#3b82f6")
-
-        st.subheader("🔢 Math Content")
-        den = st.number_input("Denominator", 1, 12, 4)
-        num = st.number_input("Numerator", 0, den, 1)
+            st.write("🎲 Problems will be auto-generated.")
+            ws_title = st.text_input("Worksheet Title", "Mixed Fractions Practice")
+            if st.button("🔀 Reshuffle Problems"):
+                st.rerun()
 
     with col_preview:
-        st.subheader("🖼️ Professional Preview")
+        st.subheader("🖼️ Live Preview")
         
-        # --- LOGIC: สิทธิ์การใช้งานและลายน้ำ ---
-        watermark = ""
-        licensing_text = "Personal Use Only"
-        
-        if tier == "Free Tier (Teaching Only)":
-            watermark = '<div style="color:red; opacity:0.3; text-align:center;">Free Version - Teaching Only</div>'
-            licensing_text = "Restricted: Classroom Teaching Only"
-        elif tier == "Personal Pro (Personal Use)":
-            licensing_text = "Licensed to: [User Name] - No Redistribution"
-        else: # Commercial
-            licensing_text = "Commercial License: Authorized for Resale (TpT/Etsy)"
-
-        # --- PREVIEW RENDER ---
+        # --- UI RENDER ---
         font_family = fonts[selected_font]
+        licensing = "Commercial License" if is_commercial else ("Personal Pro" if is_pro else "Free - Teaching Only")
         
+        # Header Container
         st.markdown(f"""
-            <div style="border: 2px solid {font_color}; padding: 20px; border-radius: 5px; background: white;">
-                <h1 style="font-family: {font_family}; color: {font_color}; font-size: {font_size}px; text-align: center;">
-                    Fraction Practice
-                </h1>
-                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 20px;">
-                    <span>Name: ____________________</span>
-                    <span>Date: __________</span>
-                </div>
-                {watermark}
-                <div style="text-align: center; margin: 30px 0;">
-                    <p style="font-family: {font_family};">Shade the circle to show <b>{num}/{den}</b></p>
-                </div>
+            <div style="border: 2px solid {font_color}; padding: 15px; border-radius: 10px; background: white; font-family: {font_family};">
+                <h2 style="color: {font_color}; text-align: center;">{ws_title}</h2>
+                <p style="text-align: right; font-size: 10px; color: gray;">{licensing} | MathPrepAI</p>
                 <hr>
-                <div style="font-size: 10px; color: gray; text-align: right;">
-                    {licensing_text} | MathPrepAI Pro
-                </div>
             </div>
         """, unsafe_allow_html=True)
 
-    # --- EXPORT ACTIONS ---
+        # Drawing Logic
+        if layout_mode == "Single (Slide)":
+            st.pyplot(draw_fraction_circle(num, den, font_color))
+            st.write(f"<p style='text-align:center; font-family:{font_family}'>Shade: {num}/{den}</p>", unsafe_allow_html=True)
+        else:
+            fig, answers = draw_fraction_grid(num_probs, font_color)
+            st.pyplot(fig)
+            if is_pro:
+                with st.expander("🔑 View Answer Key"):
+                    st.write(", ".join(answers))
+
+    # --- 3. EXPORT & CREDIT SYSTEM ---
     st.markdown("---")
-    if tier == "Commercial Enterprise (Full Access)":
-        st.success("✅ Commercial Rights Active: High-Resolution SVG/PDF Export Unlocked")
-        st.button("📥 Download Multi-Page Commercial Package")
-    elif tier == "Personal Pro (Personal Use)":
-        st.info("✅ Personal Pro: Clean PDF Export (No Watermark)")
-        st.button("📥 Download PDF Worksheet")
+    
+    if is_pro:
+        # ส่วนของสมาชิก Pro หรือ Commercial
+        st.success(f"Verified: {tier}")
+        if is_commercial:
+            st.button("📥 Download Commercial Bundle (Bulk + SVG)")
+        else:
+            st.button("📥 Download Pro PDF (No Watermark)")
     else:
-        st.warning("⚠️ Free Tier: Downloads Disabled. Upgrade for PDF access.")
-        st.button("📥 Download (Locked)", disabled=True)
+        # ส่วนของ Free Tier -> แสดง Modal จำลองการเติมเครดิต
+        st.warning("⚠️ Free Tier: Customization & Downloads are locked.")
+        
+        col_pay1, col_pay2 = st.columns(2)
+        with col_pay1:
+            if st.button("💳 Use 1 Credit to Download"):
+                st.error("You have 0 Credits. Please top up at MathPrepAI.com")
+        
+        with col_pay2:
+            if st.button("💎 Upgrade to Pro (Unlimited)"):
+                st.info("Redirecting to Stripe Payment Gateway...")
+
+
+
+---
+
+### **💎 วิเคราะห์ความ "สุด" ที่อาจารย์จะได้เห็น:**
+
+1.  **Worksheet Mode (Grid):** นี่คือจุดที่ครูจะตัดสินใจจ่ายเงินครับ เพราะเขาสามารถสร้างใบงาน 12 ข้อที่สุ่มเลขให้เองอัตโนมัติ (ไม่ต้องนั่งคีย์ทีละข้อ) ซึ่งประหยัดเวลามาก
+2.  **Answer Key Expander:** ในโหมดโปร ครูจะเห็นเฉลยทันทีใต้ Preview ทำให้เขามั่นใจก่อนกดดาวน์โหลดครับ
+3.  **Monetization UI:** ผมทำปุ่ม **"Use 1 Credit"** และ **"Upgrade to Pro"** ไว้ข้างกัน เพื่อให้อาจารย์เห็นว่าเราจะ "ปิดการขาย" หน้างานได้อย่างไร
+4.  **Commercial Distinction:** ถ้าอาจารย์เลือกโหมด Commercial ปุ่มดาวน์โหลดจะเปลี่ยนเป็น "Commercial Bundle" เพื่อให้เขารู้สึกถึงความเหนือกว่า
+
+**อาจารย์ลองเอาโค้ดนี้ไปรันแทนที่ `fraction_factory.py` เดิมดูนะครับ** แล้วลองสลับเล่นระหว่าง **Free** กับ **Personal Pro** อาจารย์จะเห็นความต่างมหาศาลที่จูงใจให้คนยอมเสียเงินครับ! 🚀🏆
+
+**อยากให้ผมช่วยดีไซน์ "หน้าเฉลย (Answer Key)" แบบเต็มหน้ากระดาษแยกออกมาสำหรับโหมด Pro เลยไหมครับ?**
