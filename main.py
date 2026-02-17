@@ -84,8 +84,8 @@ if menu == "🏠 Dashboard":
         
     with row2_col2:
     # ใช้ st.info จะดูสะอาดตาและไม่มีเมนูเทคนิคโผล่มาครับ
-    st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
-    if st.button("Launch Clock Master", key="launch_clock"):
+        st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
+        if st.button("Launch Clock Master", key="launch_clock"):
         st.session_state.menu_choice = "🕒 Time & Clock"
         st.rerun()
         
