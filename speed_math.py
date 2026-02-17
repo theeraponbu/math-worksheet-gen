@@ -4,7 +4,7 @@ from fpdf import FPDF
 import io
 import os
 
-# --- 1. PDF ENGINE ---
+# --- 1. PDF ENGINE (HIGH PRECISION) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
@@ -15,20 +15,20 @@ class GlobalMathPDF(FPDF):
             "Roboto": ("Roboto-Regular.ttf", "Roboto-Bold.ttf"),
             "Lora": ("Lora-Regular.ttf", "Lora-Bold.ttf")
         }
-        reg_name, bold_name = font_files[font_name]
-        reg_path, bold_path = f"fonts/{reg_name}", f"fonts/{bold_name}"
-        if not os.path.exists(reg_path): return False
-        self.add_font(font_name, '', reg_path)
-        self.add_font(font_name, 'B', bold_path)
+        reg, bold = font_files[font_name]
+        reg_p, bold_p = f"fonts/{reg}", f"fonts/{bold}"
+        if not os.path.exists(reg_p): return False
+        self.add_font(font_name, '', reg_p)
+        self.add_font(font_name, 'B', bold_p)
         return True
 
-    def draw_page(self, title, school, teacher, problems, font_size, scale, font_name, is_key=False):
+    def draw_page(self, title, school, teacher, problems, f_size, scale, f_name, is_key=False):
         self.add_page()
-        self.set_font(font_name, 'B', 16)
+        self.set_font(f_name, 'B', 16)
         self.cell(0, 10, school.upper(), ln=True, align='C')
-        self.set_font(font_name, 'B', font_size + 4)
+        self.set_font(f_name, 'B', f_size + 4)
         self.cell(0, 15, f"{title}{' (Key)' if is_key else ''}", ln=True, align='C')
-        self.set_font(font_name, '', 10)
+        self.set_font(f_name, '', 10)
         self.cell(90, 10, f"Teacher: {teacher}")
         self.cell(0, 10, "Name: _________________ Score: ____", align='R', ln=True)
         self.line(10, 48, self.w - 10, 48)
@@ -39,11 +39,12 @@ class GlobalMathPDF(FPDF):
             x, y = 15 + (idx % 4) * col_w, 65 + (idx // 4) * row_h
             if y > self.h - 30: break
             self.set_xy(x, y)
-            self.set_font(font_name, '', 8); self.cell(5, 5, f"{idx+1})")
-            self.set_font(font_name, 'B', font_size)
+            self.set_font(f_name, '', 8); self.cell(5, 5, f"{idx+1})")
+            self.set_font(f_name, 'B', f_size)
             self.set_xy(x+5, y); self.cell(20, 10, f"{p['a']:>3}", align='R', ln=True)
             self.set_xy(x+5, y+8); self.cell(20, 10, f"+ {p['b']:>2}", align='R', ln=True)
-            self.line(x+8, y+19, x+25, y+19)
+            # เส้นคั่นปลายขวาตรงหลักหน่วย
+            self.line(x+10, y+19, x+25, y+19)
             if is_key:
                 self.set_text_color(220, 0, 0)
                 self.set_xy(x+5, y+21); self.cell(20, 10, f"{p['a']+p['b']:>3}", align='R')
@@ -52,7 +53,7 @@ class GlobalMathPDF(FPDF):
 # --- 2. MAIN APP ---
 def run_app():
     st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');</style>", unsafe_allow_html=True)
-    st.title("⚡ Speed Math Pro: Ultimate Designer")
+    st.title("⚡ Speed Math Pro: Enterprise Designer")
 
     with st.sidebar:
         st.header("📄 Setup")
@@ -68,51 +69,53 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. REFINED PREVIEW (THE FIX) ---
-    st.subheader("📄 Live Preview")
+    # --- 3. THE TABLE-BASED PREVIEW (FIXED VISUALS) ---
+    st.subheader("📄 Live Designer Preview")
     font_css = "'Courier Prime', monospace" if font_style == "CourierPrime" else font_style
     
-    # สร้างโจทย์ทีละข้อแบบสะอาดที่สุด
     prob_html_list = []
     for i, p in enumerate(st.session_state.current_math):
-        # ใช้เครื่องหมายเครื่องหมายบวกชิดซ้าย และเส้นคั่นที่พอดี
-        item = (
-            f'<div style="width:80px; font-family:{font_css}; font-weight:bold; font-size:{f_size}px; text-align:right; position:relative; margin-bottom:25px; color:black;">'
-            f'<span style="position:absolute; left:-15px; top:0; font-size:12px; font-weight:normal; color:#888;">{i+1})</span>'
-            f'{p["a"]}<br><span style="float:left;">+</span>{p["b"]}'
-            f'<div style="border-top:3px solid black; width:65px; margin-top:4px; margin-left:auto;"></div>'
-            f'</div>'
-        )
+        # ใช้ Table เพื่อบังคับเครื่องหมายบวกให้อยู่ซ้ายสุดและวางบนเส้นพอดี
+        item = f"""
+        <div style="width: 100px; margin-bottom: 20px; font-family: {font_css}; color: black; position: relative;">
+            <span style="position: absolute; left: -10px; top: 0; font-size: 10px; color: #888;">{i+1})</span>
+            <table style="width: 70px; margin-left: auto; border-collapse: collapse; font-weight: bold; font-size: {f_size}px;">
+                <tr><td colspan="2" style="text-align: right; padding-right: 5px;">{p['a']}</td></tr>
+                <tr style="border-bottom: 3px solid black;">
+                    <td style="text-align: left; width: 20px; vertical-align: bottom;">+</td>
+                    <td style="text-align: right; padding-right: 5px;">{p['b']}</td>
+                </tr>
+            </table>
+        </div>
+        """
         prob_html_list.append(item)
     
-    all_probs = "".join(prob_html_list)
+    all_probs_html = "".join(prob_html_list)
     aspect = 1.29 if paper == "Letter" else 1.41
     
-    # ใช้คอนเทนเนอร์แบบ Static 100% เพื่อกัน Error
-    main_container = f"""
-    <div style="width:720px; height:{720 * aspect}px; background:white; border:1px solid #ddd; padding:50px; color:black; margin:auto; overflow:hidden;">
-        <div style="text-align:center; border-bottom:2px solid black; margin-bottom:25px; font-family:sans-serif;">
-            <h2 style="margin:0; font-size:20px;">{school.upper()}</h2>
-            <h1 style="margin:10px 0; font-size:32px;">{title}</h1>
-            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold;">
+    st.write(f"""
+    <div style="width: 750px; height: {750 * aspect}px; background: white; border: 1px solid #ddd; padding: 50px; color: black; margin: auto; overflow: hidden;">
+        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 30px; font-family: sans-serif;">
+            <h2 style="margin: 0; font-size: 22px;">{school.upper()}</h2>
+            <h1 style="margin: 10px 0; font-size: 36px;">{title}</h1>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; color: #444;">
                 <span>Teacher: {teacher}</span>
                 <span>Name: ________________ Score: ____</span>
             </div>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:30px; transform:scale({scale/100}); transform-origin:top center;">
-            {all_probs}
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; transform: scale({scale/100}); transform-origin: top center;">
+            {all_probs_html}
         </div>
     </div>
-    """
-    st.markdown(main_container, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # --- 4. PDF DOWNLOAD ---
+    # --- 4. EXPORT ---
     st.markdown("---")
     pdf = GlobalMathPDF(format=paper)
     if pdf.setup_fonts(font_style):
         pdf.draw_page(title, school, teacher, st.session_state.current_math, f_size, scale, font_style, False)
         pdf.draw_page(title, school, teacher, st.session_state.current_math, f_size, scale, font_style, True)
-        st.download_button("📥 Download PDF (Worksheet + Key)", data=bytes(pdf.output()), file_name=f"{title}.pdf")
+        st.download_button("📥 Download PDF", data=bytes(pdf.output()), file_name=f"{title}.pdf")
 
 if __name__ == "__main__":
     run_app()
