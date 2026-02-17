@@ -83,7 +83,11 @@ if menu == "🏠 Dashboard":
         st.error("### 📉 Graphing\nProfessional coordinate plane plotter.")
         
     with row2_col2:
-        st.help("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
+    # ใช้ st.info จะดูสะอาดตาและไม่มีเมนูเทคนิคโผล่มาครับ
+    st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
+    if st.button("Launch Clock Master", key="launch_clock"):
+        st.session_state.menu_choice = "🕒 Time & Clock"
+        st.rerun()
         
     with row2_col3:
         st.write("### 📑 PDF Editor\nAdvanced PDF management & merging.")
