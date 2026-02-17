@@ -1,55 +1,43 @@
-import streamlit as st
-import speed_math
-import fraction_factory
-
-# UI Configuration
-st.set_page_config(page_title="MathPrepAI Workspace", layout="wide", page_icon="🎓")
-
-# Professional Sidebar
-st.sidebar.title("🎓 MathPrepAI Global")
-st.sidebar.markdown("---")
-menu = st.sidebar.radio(
-    "SELECT TOOL:",
-    ["🏠 Home", 
-     "⚡ Speed Math Drills", 
-     "🧩 Fraction Factory", 
-     "📐 Shape Master", 
-     "📉 Graphing Notebook", 
-     "🕒 Time & Clock",
-     "📑 PDF Editor"]
-)
-
 if menu == "🏠 Home":
-    st.title("Welcome to MathPrepAI Pro Workspace")
-    st.markdown("""
-    ### Empowering Educators Globally
-    Select a module from the sidebar to begin generating professional math resources.
-    """)
-    
-    col1, col2 = st.columns(2)
+    st.title("Welcome to MathPrepAI Pro")
+    st.write("Select a tool to start creating your materials.")
+
+    # สร้าง Grid 3 คอลัมน์ สำหรับ 6 เครื่องมือ
+    col1, col2, col3 = st.columns(3)
+
     with col1:
-        st.info("#### ⚡ Speed Math Drills\nCreate timed arithmetic worksheets with customizable difficulty levels.")
+        st.info("### ⚡ Speed Math\nArithmetic drills generator.")
+        if st.button("Launch Speed Math", key="btn1"):
+            st.session_state.menu_choice = "⚡ Speed Math Drills"
+            st.rerun()
+
     with col2:
-        st.success("#### 🧩 Fraction Factory\nGenerate visual fraction models (Circle & Bar) for conceptual teaching.")
+        st.success("### 🧩 Fraction Factory\nVisual fraction models.")
+        if st.button("Launch Fraction Factory", key="btn2"):
+            st.session_state.menu_choice = "🧩 Fraction Factory"
+            st.rerun()
 
-elif menu == "⚡ Speed Math Drills":
-    speed_math.run_app()
+    with col3:
+        st.warning("### 📐 Shape Master\nGeometry & area tools.")
+        if st.button("Launch Shape Master", key="btn3"):
+            st.session_state.menu_choice = "📐 Shape Master"
+            st.rerun()
 
-elif menu == "🧩 Fraction Factory":
-    fraction_factory.run_app()
+    # แถวที่ 2
+    row2_col1, row2_col2, row2_col3 = st.columns(3)
+    
+    with row2_col1:
+        st.error("### 📉 Graphing\nCoordinate plane plotter.")
+        if st.button("Launch Graphing", key="btn4"):
+            st.session_state.menu_choice = "📉 Graphing Notebook"
+            st.rerun()
 
-elif menu == "📐 Shape Master":
-    import shape_master
-    shape_master.run_app()
+    with row2_col2:
+        st.help("### 🕒 Time & Clock\nAnalog clock generator.")
+        if st.button("Launch Clock", key="btn5"):
+            st.session_state.menu_choice = "🕒 Time & Clock"
+            st.rerun()
 
-elif menu == "📉 Graphing Notebook":
-    import graphing_notebook
-    graphing_notebook.run_app()
-
-elif menu == "🕒 Time & Clock":
-    import clock_generator
-    clock_generator.run_app()
-
-elif menu == "📑 PDF Editor":
-    import pdf_editor
-    pdf_editor.run_app()
+    with row2_col3:
+        st.write("### 📑 PDF Editor\nMerge & Split tools.")
+        st.button("Upgrade to Pro", key="btn6", disabled=True)
