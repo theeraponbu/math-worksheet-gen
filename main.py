@@ -83,11 +83,12 @@ if menu == "🏠 Dashboard":
         st.error("### 📉 Graphing\nProfessional coordinate plane plotter.")
         
     with row2_col2:
-    # ใช้ st.info จะดูสะอาดตาและไม่มีเมนูเทคนิคโผล่มาครับ
+        # ส่วนที่อาจารย์ถาม: ต้องย่อหน้าเข้าไป 4 spaces (หรือ 1 tab) ให้เท่ากันทั้งหมด
         st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
-        if st.button("Launch Clock Master", key="launch_clock"):
-        st.session_state.menu_choice = "🕒 Time & Clock"
-        st.rerun()
+        if st.button("Launch Clock Master", key="nav_clock"):
+            # ตรรกะการสลับหน้า
+            st.session_state.menu_choice = "🕒 Time & Clock"
+            st.rerun()
         
     with row2_col3:
         st.write("### 📑 PDF Editor\nAdvanced PDF management & merging.")
