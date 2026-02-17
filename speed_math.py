@@ -4,7 +4,7 @@ from fpdf import FPDF
 import io
 import os
 
-# --- 1. PDF ENGINE (STABLE & PRECISE) ---
+# --- 1. PDF ENGINE ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
@@ -24,18 +24,15 @@ class GlobalMathPDF(FPDF):
 
     def draw_page(self, title, school, teacher, problems, font_size, scale, font_name, is_key=False):
         self.add_page()
-        # Header
         self.set_font(font_name, 'B', 16)
         self.cell(0, 10, school.upper(), ln=True, align='C')
         self.set_font(font_name, 'B', font_size + 4)
         self.cell(0, 15, f"{title}{' (Key)' if is_key else ''}", ln=True, align='C')
-        # Info row
         self.set_font(font_name, '', 10)
         self.cell(90, 10, f"Teacher: {teacher}")
         self.cell(0, 10, "Name: _________________ Score: ____", align='R', ln=True)
         self.line(10, 48, self.w - 10, 48)
         
-        # Grid
         col_w, row_h = (self.w - 30) / 4, 35 * (scale/100)
         self.set_line_width(0.6)
         for idx, p in enumerate(problems):
@@ -46,7 +43,6 @@ class GlobalMathPDF(FPDF):
             self.set_font(font_name, 'B', font_size)
             self.set_xy(x+5, y); self.cell(20, 10, f"{p['a']:>3}", align='R', ln=True)
             self.set_xy(x+5, y+8); self.cell(20, 10, f"+ {p['b']:>2}", align='R', ln=True)
-            # เส้นคั่นปลายขวาตรงหลักหน่วยเป๊ะ
             self.line(x+8, y+19, x+25, y+19)
             if is_key:
                 self.set_text_color(220, 0, 0)
@@ -56,7 +52,7 @@ class GlobalMathPDF(FPDF):
 # --- 2. MAIN APP ---
 def run_app():
     st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');</style>", unsafe_allow_html=True)
-    st.title("⚡ Speed Math Pro: Enterprise Designer")
+    st.title("⚡ Speed Math Pro: Ultimate Designer")
 
     with st.sidebar:
         st.header("📄 Setup")
@@ -72,49 +68,51 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. REFINED PREVIEW (FIXED HTML ERROR) ---
+    # --- 3. REFINED PREVIEW (THE FIX) ---
     st.subheader("📄 Live Preview")
     font_css = "'Courier Prime', monospace" if font_style == "CourierPrime" else font_style
     
-    # ใช้โครงสร้างที่เรียบง่ายขึ้นเพื่อกันติ่ง </div>
-    prob_items = []
+    # สร้างโจทย์ทีละข้อแบบสะอาดที่สุด
+    prob_html_list = []
     for i, p in enumerate(st.session_state.current_math):
-        html = f"""
-        <div style="width: 80px; font-family: {font_css}; font-weight: bold; font-size: {f_size}px; text-align: right; position: relative; margin-bottom: 25px;">
-            <span style="position: absolute; left: -15px; top: 0; font-size: 12px; font-weight: normal; color: #888;">{i+1})</span>
-            {p['a']}<br>
-            <span style="float: left;">+</span> {p['b']}
-            <div style="border-top: 3px solid black; width: 65px; margin-top: 4px; margin-left: auto;"></div>
-        </div>
-        """
-        prob_items.append(html)
+        # ใช้เครื่องหมายเครื่องหมายบวกชิดซ้าย และเส้นคั่นที่พอดี
+        item = (
+            f'<div style="width:80px; font-family:{font_css}; font-weight:bold; font-size:{f_size}px; text-align:right; position:relative; margin-bottom:25px; color:black;">'
+            f'<span style="position:absolute; left:-15px; top:0; font-size:12px; font-weight:normal; color:#888;">{i+1})</span>'
+            f'{p["a"]}<br><span style="float:left;">+</span>{p["b"]}'
+            f'<div style="border-top:3px solid black; width:65px; margin-top:4px; margin-left:auto;"></div>'
+            f'</div>'
+        )
+        prob_html_list.append(item)
     
-    all_probs_html = "".join(prob_items)
-
+    all_probs = "".join(prob_html_list)
     aspect = 1.29 if paper == "Letter" else 1.41
-    # หุ้มด้วย div ใหญ่ใบเดียวจบเพื่อความเสถียร
-    st.write(f"""
-    <div style="width: 720px; height: {720 * aspect}px; background: white; border: 1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 50px; color: black; margin: auto; overflow: hidden;">
-        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 25px; font-family: sans-serif;">
-            <h3 style="margin: 0;">{school.upper()}</h3>
-            <h1 style="margin: 10px 0;">{title}</h1>
-            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+    
+    # ใช้คอนเทนเนอร์แบบ Static 100% เพื่อกัน Error
+    main_container = f"""
+    <div style="width:720px; height:{720 * aspect}px; background:white; border:1px solid #ddd; padding:50px; color:black; margin:auto; overflow:hidden;">
+        <div style="text-align:center; border-bottom:2px solid black; margin-bottom:25px; font-family:sans-serif;">
+            <h2 style="margin:0; font-size:20px;">{school.upper()}</h2>
+            <h1 style="margin:10px 0; font-size:32px;">{title}</h1>
+            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold;">
                 <span>Teacher: {teacher}</span>
                 <span>Name: ________________ Score: ____</span>
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; transform: scale({scale/100}); transform-origin: top center;">
-            {all_probs_html}
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:30px; transform:scale({scale/100}); transform-origin:top center;">
+            {all_probs}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(main_container, unsafe_allow_html=True)
 
-    # --- 4. DOWNLOAD ---
+    # --- 4. PDF DOWNLOAD ---
+    st.markdown("---")
     pdf = GlobalMathPDF(format=paper)
     if pdf.setup_fonts(font_style):
         pdf.draw_page(title, school, teacher, st.session_state.current_math, f_size, scale, font_style, False)
         pdf.draw_page(title, school, teacher, st.session_state.current_math, f_size, scale, font_style, True)
-        st.download_button("📥 Download PDF", data=bytes(pdf.output()), file_name=f"{title}.pdf")
+        st.download_button("📥 Download PDF (Worksheet + Key)", data=bytes(pdf.output()), file_name=f"{title}.pdf")
 
 if __name__ == "__main__":
     run_app()
