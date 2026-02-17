@@ -15,18 +15,19 @@ class GlobalMathPDF(FPDF):
         self.set_font('Helvetica', 'B', font_size + 4)
         self.cell(0, 15, title, ln=True, align='C')
         self.set_font('Helvetica', '', 10)
-        self.cell(95, 10, f"Teacher: {teacher}", ln=False)
-        self.cell(0, 10, "Name: _________________ Score: ____", ln=True, align='R')
+        w = self.w - 20
+        self.cell(w/2, 10, f"Teacher: {teacher}", ln=False)
+        self.cell(w/2, 10, "Name: _________________ Score: ____", ln=True, align='R')
         self.line(10, 48, self.w - 10, 48)
         self.ln(10)
 
         col_w = (self.w - 30) / 4
-        row_h = 35 * (scale/100) # ระยะห่างระหว่างข้อ
+        row_h = 35 * (scale/100)
         
         for idx, p in enumerate(problems):
             x = 15 + (idx % 4) * col_w
             y = 60 + (idx // 4) * row_h
-            if y > self.h - 30: break # ป้องกันหลุดขอบกระดาษ
+            if y > self.h - 30: break
             
             self.set_xy(x, y)
             self.set_font('Helvetica', '', 8)
@@ -38,33 +39,46 @@ class GlobalMathPDF(FPDF):
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
             self.line(x + 10, y + 18, x + 28, y + 18)
 
-# --- 2. APP LOGIC ---
+# --- 2. MAIN APP ---
 def run_app():
     st.title("⚡ Speed Math Pro: Global Designer")
     tier = st.session_state.get('tier', "Commercial Enterprise (Full Access)")
 
     with st.sidebar:
-        st.header("📄 Page & Design")
-        paper_size = st.selectbox("Standard", ["Letter", "A4"])
+        st.header("📄 Page Setup")
+        paper_size = st.selectbox("Paper Format", ["Letter", "A4"])
         content_scale = st.slider("Content Scale (%)", 70, 130, 100)
-        num_probs = st.slider("Problems", 12, 48, 24)
-        font_size = st.slider("Math Font Size", 16, 32, 22)
+        num_probs = st.slider("Number of Problems", 12, 48, 24)
+        font_size = st.slider("Font Size", 16, 32, 22)
         
         st.header("🏫 Branding")
-        school = st.text_input("School", "Global Academy")
+        school = st.text_input("School Name", "Global Academy")
         teacher = st.text_input("Teacher", "Mr. Smith")
-        ws_title = st.text_input("Title", "Vertical Addition")
+        ws_title = st.text_input("Worksheet Title", "Vertical Addition")
 
-    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
+    # Generate Logic
+    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Problems"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. LIVE PREVIEW CANVAS (ส่วนที่หายไป) ---
+    # --- 3. THE FIXED LIVE PREVIEW CANVAS ---
     st.subheader("📄 Live Designer Preview")
     
-    # คำนวณสัดส่วนกระดาษ
     aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     preview_width = 700 
     
+    # สร้างโจทย์แต่ละข้อในรูปแบบ HTML
+    problems_html = ""
+    for i, p in enumerate(st.session_state.current_math):
+        problems_html += f"""
+        <div style="text-align: right; padding: 10px; font-size: {font_size}px; font-family: 'Courier New', monospace;">
+            <span style="float: left; font-size: 12px; color: gray;">{i+1})</span>
+            {p['a']}<br>
+            +{p['b']}<br>
+            <hr style="border: 1px solid black; margin: 5px 0;">
+        </div>
+        """
+
+    # แสดงผลหน้ากระดาษจำลอง
     st.markdown(f"""
         <div style="
             width: {preview_width}px; 
@@ -75,13 +89,12 @@ def run_app():
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             padding: 40px;
             color: black;
-            font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
         ">
             <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                <div style="font-weight: bold; font-size: 18px;">{school.upper()}</div>
-                <div style="font-weight: bold; font-size: 26px; margin: 10px 0;">{ws_title}</div>
-                <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <div style="font-weight: bold; font-size: 18px; font-family: Arial;">{school.upper()}</div>
+                <div style="font-weight: bold; font-size: 26px; margin: 10px 0; font-family: Arial;">{ws_title}</div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; font-family: Arial;">
                     <span>Teacher: {teacher}</span>
                     <span>Name: ________________ Score: ____</span>
                 </div>
@@ -90,11 +103,11 @@ def run_app():
             <div style="
                 display: grid; 
                 grid-template-columns: repeat(4, 1fr); 
-                gap: 30px;
+                gap: 20px;
                 transform: scale({content_scale/100});
                 transform-origin: top center;
             ">
-                {" ".join([f"<div style='text-align: right; padding: 10px; font-size: {font_size}px;'>{i+1})<br>{p['a']}<br>+{p['b']}<br><hr style='border:1px solid black;'></div>" for i, p in enumerate(st.session_state.current_math)])}
+                {problems_html}
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -107,10 +120,11 @@ def run_app():
     try:
         pdf_bytes = bytes(pdf.output())
         st.download_button(
-            label="📥 Download Ready-to-Print PDF",
+            label="📥 Download Professional PDF",
             data=pdf_bytes,
             file_name=f"{ws_title.replace(' ', '_')}.pdf",
             mime="application/pdf"
         )
+        st.success("✅ PDF is ready for download!")
     except Exception as e:
         st.error(f"Engine Error: {e}")
