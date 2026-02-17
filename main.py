@@ -14,8 +14,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. THE TESTING SUITE (ADMIN TOGGLE) ---
-# ส่วนนี้คือ "สวิตช์ลับ" ที่เราคุยกันเพื่อให้อาจารย์ทดสอบสิทธิ์การใช้งาน 3 ระดับ
+# --- 2. STATE MANAGEMENT (ควบคุมการเปลี่ยนหน้า) ---
+# ตรวจสอบว่ามีค่า menu_choice ในระบบหรือยัง ถ้าไม่มีให้เริ่มที่ Dashboard
+if 'menu_choice' not in st.session_state:
+    st.session_state.menu_choice = "🏠 Dashboard"
+
+# --- 3. THE TESTING SUITE (ADMIN TOGGLE) ---
 st.sidebar.title("🔐 Tier Testing (Admin)")
 user_tier = st.sidebar.radio(
     "Switch Access Level:",
@@ -27,10 +31,9 @@ user_tier = st.sidebar.radio(
     help="Select a tier to test features and licensing watermarks."
 )
 
-# เก็บสถานะ Tier ไว้ใน Session State เพื่อให้ไฟล์อื่นเรียกใช้ได้
+# ส่งค่า Tier ไปยัง Session State ให้ไฟล์อื่นใช้งาน
 st.session_state.tier = user_tier
 
-# แสดงสถานะปัจจุบันแบบมืออาชีพ
 if user_tier == "Commercial Enterprise (Full Access)":
     st.sidebar.success("🚀 FULL COMMERCIAL ACCESS")
 elif user_tier == "Personal Pro (Personal Use)":
@@ -40,58 +43,77 @@ else:
 
 st.sidebar.markdown("---")
 
-# --- 3. NAVIGATION MENU ---
-st.sidebar.title("🎓 MathPrepAI Workspace")
-menu = st.sidebar.radio(
-    "SELECT TOOL:",
-    [
-        "🏠 Dashboard",
-        "🧩 Fraction Factory",
-        "⚡ Speed Math Drills",
-        "📐 Shape Master",
-        "📉 Graphing Notebook",
-        "🕒 Time & Clock",
-        "📑 PDF Editor & Merger"
-    ]
-)
+# --- 4. NAVIGATION MENU (SYNCED WITH DASHBOARD) ---
+menu_list = [
+    "🏠 Dashboard", 
+    "🧩 Fraction Factory", 
+    "⚡ Speed Math Drills", 
+    "📐 Shape Master", 
+    "📉 Graphing Notebook", 
+    "🕒 Time & Clock", 
+    "📑 PDF Editor & Merger"
+]
 
-# --- 4. ROUTING LOGIC (การเปลี่ยนหน้า) ---
+# ค้นหาตำแหน่งของเมนูปัจจุบันเพื่อทำ Default Index ให้ Sidebar เลื่อนตาม
+try:
+    current_index = menu_list.index(st.session_state.menu_choice)
+except ValueError:
+    current_index = 0
+
+st.sidebar.title("🎓 MathPrepAI Workspace")
+menu = st.sidebar.radio("SELECT TOOL:", menu_list, index=current_index)
+
+# อัปเดตค่าที่เลือกจาก Sidebar กลับเข้าสู่ Session State
+st.session_state.menu_choice = menu
+
+# --- 5. ROUTING LOGIC (การแสดงผลแต่ละหน้า) ---
+
 if menu == "🏠 Dashboard":
     st.title("Welcome to MathPrepAI Global Dashboard")
     st.write(f"Current Access: **{user_tier}**")
     st.markdown("---")
 
-    # ส่วนแสดงการ์ดเครื่องมือ (6 การ์ด)
     st.subheader("Your Toolkit")
     
-    # แถวที่ 1
+    # --- ROW 1 ---
     col1, col2, col3 = st.columns(3)
     with col1:
         st.info("### 🧩 Fraction Factory\nVisual fraction models with pro themes.")
-        if st.button("Launch Fraction Factory"):
-            st.warning("Please use the sidebar to navigate.") # หรือจะเขียนระบบเปลี่ยนหน้าอัตโนมัติเพิ่มได้
+        if st.button("Launch Tool", key="btn_frac"):
+            st.session_state.menu_choice = "🧩 Fraction Factory"
+            st.rerun()
             
     with col2:
         st.success("### ⚡ Speed Math\nHigh-speed arithmetic drill generator.")
+        if st.button("Launch Tool", key="btn_speed"):
+            st.session_state.menu_choice = "⚡ Speed Math Drills"
+            st.rerun()
         
     with col3:
         st.warning("### 📐 Shape Master\nGeometric shapes with area calculations.")
+        if st.button("Launch Tool", key="btn_shape"):
+            st.session_state.menu_choice = "📐 Shape Master"
+            st.rerun()
 
-    # แถวที่ 2
+    # --- ROW 2 ---
     row2_col1, row2_col2, row2_col3 = st.columns(3)
     with row2_col1:
         st.error("### 📉 Graphing\nProfessional coordinate plane plotter.")
+        if st.button("Launch Tool", key="btn_graph"):
+            st.session_state.menu_choice = "📉 Graphing Notebook"
+            st.rerun()
         
     with row2_col2:
-        # ส่วนที่อาจารย์ถาม: ต้องย่อหน้าเข้าไป 4 spaces (หรือ 1 tab) ให้เท่ากันทั้งหมด
         st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
-        if st.button("Launch Clock Master", key="nav_clock"):
-            # ตรรกะการสลับหน้า
+        if st.button("Launch Tool", key="btn_clock"):
             st.session_state.menu_choice = "🕒 Time & Clock"
             st.rerun()
         
     with row2_col3:
         st.write("### 📑 PDF Editor\nAdvanced PDF management & merging.")
+        if st.button("Launch Tool", key="btn_pdf"):
+            st.session_state.menu_choice = "📑 PDF Editor & Merger"
+            st.rerun()
 
 elif menu == "🧩 Fraction Factory":
     fraction_factory.run_app()
@@ -111,6 +133,6 @@ elif menu == "🕒 Time & Clock":
 elif menu == "📑 PDF Editor & Merger":
     pdf_editor.run_app()
 
-# --- 5. FOOTER ---
+# --- 6. FOOTER ---
 st.sidebar.markdown("---")
 st.sidebar.caption(f"© 2026 MathPrepAI Global | Status: {user_tier}")
