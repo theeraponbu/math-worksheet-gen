@@ -3,3 +3,4 @@ matplotlib
 numpy
 reportlab
 PyPDF2
+pip install fpdf2
