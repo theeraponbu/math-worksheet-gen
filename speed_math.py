@@ -6,6 +6,7 @@ import io
 # --- 1. PDF ENGINE (LETTER / A4 SUPPORT) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
+        # Letter: 215.9 x 279.4 mm | A4: 210 x 297 mm
         super().__init__(orientation='P', unit='mm', format=format)
 
     def draw_page(self, title, school, teacher, problems, font_size, scale):
@@ -31,23 +32,33 @@ class GlobalMathPDF(FPDF):
         for idx, p in enumerate(problems):
             x = 15 + (idx % 4) * col_w
             y = 60 + (idx // 4) * row_h
-            if y > self.h - 30: break
+            
+            # ป้องกันการเขียนทับขอบล่างกระดาษ
+            if y > self.h - 30: 
+                break
             
             self.set_xy(x, y)
             self.set_font('Helvetica', '', 8)
             self.cell(5, 5, f"{idx+1})")
+            
             self.set_font('Helvetica', 'B', font_size)
             self.set_xy(x + 5, y)
+            # แสดงเลขตัวตั้ง
             self.cell(20, 10, f"{p['a']:>3}", ln=True, align='R')
             self.set_xy(x + 5, y + 8)
+            # แสดงเครื่องหมาย + และเลขตัวบวก
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
+            # วาดเส้นคำตอบ
             self.line(x + 10, y + 18, x + 28, y + 18)
 
 # --- 2. MAIN APP ---
 def run_app():
     st.title("⚡ Speed Math Pro: Global Designer")
+    
+    # ดึงค่าสิทธิ์จาก Session State
     tier = st.session_state.get('tier', "Commercial Enterprise (Full Access)")
 
+    # --- SIDEBAR CONFIGURATION ---
     with st.sidebar:
         st.header("📄 Page Setup")
         paper_size = st.selectbox("Paper Format", ["Letter", "A4"])
@@ -60,17 +71,21 @@ def run_app():
         teacher = st.text_input("Teacher", "Mr. Smith")
         ws_title = st.text_input("Worksheet Title", "Vertical Addition")
 
-    # Generate Logic
+    # --- LOGIC: PROBLEM GENERATION ---
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Problems"):
-        st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
+        st.session_state.current_math = [
+            {"a": random.randint(10, 99), "b": random.randint(10, 99)} 
+            for _ in range(num_probs)
+        ]
 
-    # --- 3. LIVE DESIGNER PREVIEW (FIXED HTML) ---
+    # --- 3. LIVE DESIGNER PREVIEW ---
     st.subheader("📄 Live Designer Preview")
     
+    # กำหนดสัดส่วนตามขนาดกระดาษ
     aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     preview_width = 700 
     
-    # แก้ไขจุดที่ทำให้ขึ้น Error โค้ด HTML
+    # สร้าง HTML สำหรับโจทย์แต่ละข้อ
     problems_html = ""
     for i, p in enumerate(st.session_state.current_math):
         problems_html += f"""
@@ -82,7 +97,7 @@ def run_app():
         </div>
         """
 
-    # ส่วนแสดงผลหน้ากระดาษจำลอง
+    # แสดงผลหน้ากระดาษจำลองด้วย st.markdown
     st.markdown(f"""
         <div style="
             width: {preview_width}px; 
@@ -117,11 +132,15 @@ def run_app():
 
     # --- 4. DOWNLOAD SYSTEM ---
     st.markdown("---")
+    
+    # สร้าง PDF Object
     pdf = GlobalMathPDF(format=paper_size)
     pdf.draw_page(ws_title, school, teacher, st.session_state.current_math, font_size, content_scale)
     
     try:
+        # แปลงเป็นไบนารีและส่งให้ปุ่มดาวน์โหลด
         pdf_bytes = bytes(pdf.output())
+        
         st.download_button(
             label="📥 Download Professional PDF",
             data=pdf_bytes,
@@ -129,5 +148,11 @@ def run_app():
             mime="application/pdf",
             key="speed_math_final_dl"
         )
+        st.success("✅ Professional PDF is ready for download!")
+        
     except Exception as e:
         st.error(f"Engine Error: {e}")
+
+# ส่วนท้ายไฟล์ (ถ้าต้องการรันแยกไฟล์)
+if __name__ == "__main__":
+    run_app()
