@@ -36,43 +36,51 @@ class GlobalMathPDF(FPDF):
         self.add_page()
         display_title = f"{title} (Answer Key)" if is_answer_key else title
         
-        # Header
+        # Header Section
         self.set_font(font_name, 'B', 16)
         self.cell(0, 10, school.upper(), ln=True, align='C')
         self.set_font(font_name, 'B', font_size + 4)
         self.cell(0, 15, display_title, ln=True, align='C')
         
-        # Info
+        # Info row
         self.set_font(font_name, '', 10)
         self.cell((self.w-20)/2, 10, f"Teacher: {teacher}", ln=False)
         self.cell((self.w-20)/2, 10, "Name: _________________ Score: ____", ln=True, align='R')
+        self.set_line_width(0.5)
         self.line(10, 48, self.w - 10, 48)
         self.ln(10)
 
-        # Grid
+        # Grid logic
         col_w = (self.w - 30) / 4
         row_h = 35 * (scale/100)
+        self.set_line_width(0.6) # ความหนาเส้นคั่น
         
         for idx, p in enumerate(problems):
             x = 15 + (idx % 4) * col_w
             y = 65 + (idx // 4) * row_h
             if y > self.h - 30: break
             
+            # 1. เลขข้อ
             self.set_xy(x, y)
             self.set_font(font_name, '', 8)
             self.cell(5, 5, f"{idx+1})")
             
+            # 2. ตัวเลขโจทย์
             self.set_font(font_name, 'B', font_size)
             self.set_xy(x + 5, y)
             self.cell(20, 10, f"{p['a']:>3}", ln=True, align='R')
             self.set_xy(x + 5, y + 8)
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
-            self.set_line_width(0.6)
-            self.line(x + 13, y + 19, x + 31, y + 19)
+            
+            # 3. ปรับเส้นคั่นให้ "ชิดซ้าย" (Alignment Match)
+            # ขยับพิกัด X เริ่มต้นจาก 13 เป็น 10 เพื่อให้บาลานซ์ชิดซ้ายเหมือนหน้าจอ
+            self.line(x + 10, y + 19, x + 28, y + 19)
 
+            # 4. เขียนคำตอบ (เฉพาะหน้าเฉลย)
             if is_answer_key:
                 self.set_text_color(220, 0, 0)
-                self.set_xy(x + 5, y + 18)
+                # ขยับค่า Y จาก +18 เป็น +20 เพื่อให้คำตอบไม่ชิดเส้นจนเกินไป สวยงามขึ้น
+                self.set_xy(x + 5, y + 20) 
                 self.cell(20, 10, f"{p['a'] + p['b']:>3}", ln=True, align='R')
                 self.set_text_color(0, 0, 0)
 
