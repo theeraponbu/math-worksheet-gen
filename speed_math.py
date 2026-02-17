@@ -3,31 +3,33 @@ import random
 from fpdf import FPDF
 import io
 import requests
+import os
 
-# --- 1. PDF ENGINE (WITH FONT EMBEDDING) ---
+# --- 1. PDF ENGINE (STABLE FONT EMBEDDING) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
         
     def add_custom_fonts(self):
-        # ดาวน์โหลดฟอนต์จาก Google Fonts (เฉพาะตัวที่ใช้เชิงพาณิชย์ได้ฟรี)
-        # ในที่นี้ใช้ Courier Prime เพื่อความเป๊ะของหลักตัวเลข
-        font_url = "https://github.com/google/fonts/raw/main/ofl/courierprime/CourierPrime-Bold.ttf"
-        r = requests.get(font_url)
-        with open("font_bold.ttf", "wb") as f:
-            f.write(r.content)
+        # ดาวน์โหลดฟอนต์ Courier Prime จาก Google Fonts
+        fonts = {
+            "font_reg.ttf": "https://github.com/google/fonts/raw/main/ofl/courierprime/CourierPrime-Regular.ttf",
+            "font_bold.ttf": "https://github.com/google/fonts/raw/main/ofl/courierprime/CourierPrime-Bold.ttf"
+        }
         
-        font_reg_url = "https://github.com/google/fonts/raw/main/ofl/courierprime/CourierPrime-Regular.ttf"
-        r = requests.get(font_reg_url)
-        with open("font_reg.ttf", "wb") as f:
-            f.write(r.content)
+        for name, url in fonts.items():
+            if not os.path.exists(name):
+                r = requests.get(url)
+                with open(name, "wb") as f:
+                    f.write(r.content)
 
-        self.add_font('CourierPrime', '', 'font_reg.ttf', unicode=True)
-        self.add_font('CourierPrime', 'B', 'font_bold.ttf', unicode=True)
+        # แก้ไข Error 'unicode': ลบ argument unicode=True ออก เพราะ fpdf2 เวอร์ชันใหม่จัดการให้อัตโนมัติ
+        self.add_font('CourierPrime', '', 'font_reg.ttf')
+        self.add_font('CourierPrime', 'B', 'font_bold.ttf')
 
     def draw_page(self, title, school, teacher, problems, font_size, scale):
         self.add_page()
-        # ใช้ฟอนต์ที่เราฝังเข้าไป (CourierPrime) ทั้งหมด
+        # ใช้ฟอนต์ Courier Prime ทั้งหมดเพื่อให้เป๊ะตามหน้าจอ
         self.set_font('CourierPrime', 'B', 16)
         self.cell(0, 10, school.upper(), ln=True, align='C')
         self.set_font('CourierPrime', 'B', font_size + 4)
@@ -51,7 +53,7 @@ class GlobalMathPDF(FPDF):
             if y > self.h - 30: break
             
             self.set_xy(x, y)
-            self.set_font('CourierPrime', '', 9) # ข้อกำหนดฟอนต์ชุดเดียวกัน
+            self.set_font('CourierPrime', '', 9)
             self.cell(5, 5, f"{idx+1})")
             
             self.set_font('CourierPrime', 'B', font_size)
@@ -59,18 +61,19 @@ class GlobalMathPDF(FPDF):
             self.cell(20, 10, f"{p['a']:>3}", ln=True, align='R')
             self.set_xy(x + 5, y + 8)
             self.cell(20, 10, f"+ {p['b']:>2}", ln=True, align='R')
+            # ปรับเส้นให้สมจริงและสั้นลงตามตัวเลข
             self.line(x + 13, y + 19, x + 31, y + 19)
 
 # --- 2. MAIN APP ---
 def run_app():
-    # โหลด CSS ของ Google Fonts ให้หน้าจอตรงกับ PDF
+    # ฝัง Google Fonts ให้หน้าจอตรงกับ PDF
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("⚡ Speed Math Pro: 100% Font Precision")
+    st.title("⚡ Speed Math Pro: 100% Visual Accuracy")
     
     with st.sidebar:
         st.header("📄 Page Setup")
@@ -87,23 +90,22 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. MASTER PREVIEW (MATCHED FONT) ---
+    # --- 3. MASTER PREVIEW ---
     st.subheader("📄 Live Designer Preview")
-    # ฟอนต์ที่ใช้ในหน้าจอ: 'Courier Prime'
     css_font = "'Courier Prime', monospace"
     
-    all_problems_html = ""
-    for i, p in enumerate(st.session_state.current_math):
-        all_problems_html += (
-            f'<div style="text-align:right; font-size:{font_size}px; font-family:{css_font}; font-weight:bold; width:80px; margin:auto; margin-bottom:20px;">'
-            f'<span style="float:left; font-size:12px; color:gray; font-weight:normal;">{i+1})</span>'
-            f'{p["a"]}<br>+{p["b"]}'
-            f'<div style="border-bottom:3px solid black; width:65px; margin-left:auto; margin-top:2px;"></div>'
-            f'</div>'
-        )
+    all_problems_html = "".join([
+        f'<div style="text-align:right; font-size:{font_size}px; font-family:{css_font}; font-weight:bold; width:80px; margin:auto; margin-bottom:20px;">'
+        f'<span style="float:left; font-size:12px; color:gray; font-weight:normal;">{i+1})</span>'
+        f'{p["a"]}<br>+{p["b"]}'
+        f'<div style="border-bottom:3px solid black; width:65px; margin-left:auto; margin-top:2px;"></div>'
+        f'</div>'
+        for i, p in enumerate(st.session_state.current_math)
+    ])
 
+    aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     canvas_container = f"""
-    <div style="width:720px; height:{720 * (1.29 if paper_size == 'Letter' else 1.41)}px; background:white; margin:auto; border:1px solid #ddd; box-shadow:0 4px 15px rgba(0,0,0,0.1); padding:50px; color:black; overflow:hidden; font-family:{css_font};">
+    <div style="width:720px; height:{720 * aspect_ratio}px; background:white; margin:auto; border:1px solid #ddd; box-shadow:0 4px 15px rgba(0,0,0,0.1); padding:50px; color:black; overflow:hidden; font-family:{css_font};">
         <div style="text-align:center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:25px;">
             <div style="font-weight:bold; font-size:18px;">{school.upper()}</div>
             <div style="font-weight:bold; font-size:32px; margin:15px 0;">{ws_title}</div>
@@ -112,23 +114,21 @@ def run_app():
                 <span>Name: ________________ Score: ____</span>
             </div>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:25px; transform:scale({content_scale/100}); transform-origin:top center;">
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:30px; transform:scale({content_scale/100}); transform-origin:top center;">
             {all_problems_html}
         </div>
     </div>
     """
     st.write(canvas_container, unsafe_allow_html=True)
 
-    # --- 4. DOWNLOAD SYSTEM (WITH FONT EMBEDDING) ---
+    # --- 4. DOWNLOAD SYSTEM ---
     st.markdown("---")
     pdf = GlobalMathPDF(format=paper_size)
     try:
-        # ขั้นตอนสำคัญ: โหลดและฝังฟอนต์ลงใน PDF
         pdf.add_custom_fonts()
         pdf.draw_page(ws_title, school, teacher, st.session_state.current_math, font_size, content_scale)
-        
         pdf_bytes = bytes(pdf.output())
-        st.download_button(label="📥 Download Precision PDF", data=pdf_bytes, file_name=f"{ws_title}.pdf", mime="application/pdf")
-        st.success("✅ PDF สร้างสำเร็จด้วยฟอนต์แบบเดียวกับที่เห็นบนจอ!")
+        st.download_button(label="📥 Download Professional PDF", data=pdf_bytes, file_name=f"{ws_title}.pdf", mime="application/pdf")
+        st.success("✅ PDF สร้างสำเร็จด้วยฟอนต์ Courier Prime!")
     except Exception as e:
         st.error(f"Error: {e}")
