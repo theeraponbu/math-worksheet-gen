@@ -2,5 +2,5 @@ streamlit
 matplotlib
 numpy
 reportlab
-PyPDF2
+pypdf2
 fpdf2
