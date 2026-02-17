@@ -113,18 +113,23 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. LIVE PREVIEW (MATCHED FONT) ---
+    # --- 3. LIVE DESIGNER PREVIEW (ปรับจูนความสวยงามให้ตรงกับ PDF) ---
     css_fonts = {"CourierPrime": "'Courier Prime'", "Roboto": "'Roboto'", "Lora": "'Lora'"}
     current_css = css_fonts[font_choice]
     
-    problems_html = "".join([
-        f'<div style="text-align:right; font-size:{font_size}px; font-family:{current_css}; font-weight:bold; width:85px; margin:auto; margin-bottom:25px;">'
-        f'<span style="float:left; font-size:12px; color:#888;">{i+1})</span>'
-        f'{p["a"]}<br>+{p["b"]}'
-        f'<div style="border-bottom:3px solid black; width:65px; margin-left:auto; margin-top:4px;"></div>'
-        f'</div>'
-        for i, p in enumerate(st.session_state.current_math)
-    ])
+    problems_html = ""
+    for i, p in enumerate(st.session_state.current_math):
+        # ปรับ CSS: ขยับเครื่องหมาย + ไปซ้ายสุด และลดความกว้างเส้นคั่น
+        problems_html += f"""
+        <div style="text-align:right; font-size:{font_size}px; font-family:{current_css}; font-weight:bold; width:100px; margin:auto; margin-bottom:25px; position:relative;">
+            <span style="position:absolute; left:-10px; top:0; font-size:12px; color:#888; font-weight:normal;">{i+1})</span>
+            <div style="padding-right:10px;">
+                {p['a']}<br>
+                <span style="float:left; padding-left:5px;">+</span>{p['b']}
+                <div style="border-bottom:3px solid black; width:70px; margin-left:auto; margin-top:4px;"></div>
+            </div>
+        </div>
+        """
 
     aspect = 1.29 if paper_size == "Letter" else 1.41
     st.write(f"""
