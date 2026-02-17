@@ -3,17 +3,20 @@ import random
 from fpdf import FPDF
 import io
 
-# --- 1. PDF ENGINE ---
+# --- 1. PDF ENGINE (LETTER / A4 SUPPORT) ---
 class GlobalMathPDF(FPDF):
     def __init__(self, format='Letter'):
         super().__init__(orientation='P', unit='mm', format=format)
 
     def draw_page(self, title, school, teacher, problems, font_size, scale):
         self.add_page()
+        # Header Styling
         self.set_font('Helvetica', 'B', 16)
         self.cell(0, 10, school.upper(), ln=True, align='C')
         self.set_font('Helvetica', 'B', font_size + 4)
         self.cell(0, 15, title, ln=True, align='C')
+        
+        # Info Bar
         self.set_font('Helvetica', '', 10)
         w = self.w - 20
         self.cell(w/2, 10, f"Teacher: {teacher}", ln=False)
@@ -21,6 +24,7 @@ class GlobalMathPDF(FPDF):
         self.line(10, 48, self.w - 10, 48)
         self.ln(10)
 
+        # Grid Calculation
         col_w = (self.w - 30) / 4
         row_h = 35 * (scale/100)
         
@@ -49,10 +53,10 @@ def run_app():
         paper_size = st.selectbox("Paper Format", ["Letter", "A4"])
         content_scale = st.slider("Content Scale (%)", 70, 130, 100)
         num_probs = st.slider("Number of Problems", 12, 48, 24)
-        font_size = st.slider("Font Size", 16, 32, 22)
+        font_size = st.slider("Math Font Size", 16, 32, 22)
         
         st.header("🏫 Branding")
-        school = st.text_input("School Name", "Global Academy")
+        school = st.text_input("School Name", "GLOBAL ACADEMY")
         teacher = st.text_input("Teacher", "Mr. Smith")
         ws_title = st.text_input("Worksheet Title", "Vertical Addition")
 
@@ -60,25 +64,25 @@ def run_app():
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Problems"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
 
-    # --- 3. THE FIXED LIVE PREVIEW CANVAS ---
+    # --- 3. LIVE DESIGNER PREVIEW (FIXED HTML) ---
     st.subheader("📄 Live Designer Preview")
     
     aspect_ratio = 1.29 if paper_size == "Letter" else 1.41
     preview_width = 700 
     
-    # สร้างโจทย์แต่ละข้อในรูปแบบ HTML
+    # แก้ไขจุดที่ทำให้ขึ้น Error โค้ด HTML
     problems_html = ""
     for i, p in enumerate(st.session_state.current_math):
         problems_html += f"""
-        <div style="text-align: right; padding: 10px; font-size: {font_size}px; font-family: 'Courier New', monospace;">
+        <div style="text-align: right; font-size: {font_size}px; font-family: 'Courier New', monospace; margin-bottom: 10px;">
             <span style="float: left; font-size: 12px; color: gray;">{i+1})</span>
             {p['a']}<br>
             +{p['b']}<br>
-            <hr style="border: 1px solid black; margin: 5px 0;">
+            <hr style="border: 1px solid black; margin: 3px 0;">
         </div>
         """
 
-    # แสดงผลหน้ากระดาษจำลอง
+    # ส่วนแสดงผลหน้ากระดาษจำลอง
     st.markdown(f"""
         <div style="
             width: {preview_width}px; 
@@ -99,11 +103,10 @@ def run_app():
                     <span>Name: ________________ Score: ____</span>
                 </div>
             </div>
-            
             <div style="
                 display: grid; 
                 grid-template-columns: repeat(4, 1fr); 
-                gap: 20px;
+                gap: 25px;
                 transform: scale({content_scale/100});
                 transform-origin: top center;
             ">
@@ -123,8 +126,8 @@ def run_app():
             label="📥 Download Professional PDF",
             data=pdf_bytes,
             file_name=f"{ws_title.replace(' ', '_')}.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="speed_math_final_dl"
         )
-        st.success("✅ PDF is ready for download!")
     except Exception as e:
         st.error(f"Engine Error: {e}")
