@@ -14,6 +14,7 @@ import pdf_editor
 # --- 1. CONFIGURATION & SECURITY ---
 st.set_page_config(page_title="MathPrepAI Ultimate Pro", layout="wide")
 SECRET_KEY = "MATH_PREP_SECRET_99" # ต้องตรงกับใน WordPress Snippet
+uid = "test_user_001"
 
 def validate_access(token, uid):
     if not token or not uid: return False
