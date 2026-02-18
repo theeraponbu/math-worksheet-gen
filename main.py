@@ -41,9 +41,9 @@ if 'access_verified' not in st.session_state:
         st.session_state.access_verified = False
 
 # --- 3. CHECK ACCESS ---
-if not st.session_state.access_verified:
-    st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
-    st.stop()
+#if not st.session_state.access_verified:
+#    st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
+#    st.stop()
 
 user_tier = st.session_state.user_tier
 
