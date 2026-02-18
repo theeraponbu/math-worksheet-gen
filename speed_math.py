@@ -5,151 +5,194 @@ from fpdf import FPDF
 import io
 import os
 
-# --- 1. PDF ENGINE (MULTI-PAGE SUPPORT) ---
-class GlobalMathPDF(FPDF):
-    def __init__(self, format='Letter'):
-        super().__init__(orientation='P', unit='mm', format=format)
-        
-    def setup_fonts(self, font_name):
-        font_files = {
-            "CourierPrime": ("CourierPrime-Regular.ttf", "CourierPrime-Bold.ttf"),
-            "Roboto": ("Roboto-Regular.ttf", "Roboto-Bold.ttf"),
-            "Lora": ("Lora-Regular.ttf", "Lora-Bold.ttf")
-        }
-        if font_name not in font_files: return False
-        reg, bld = font_files[font_name]
-        reg_p, bld_p = f"fonts/{reg}", f"fonts/{bld}"
-        if not os.path.exists(reg_p): return False
-        self.add_font(font_name, '', reg_p)
-        self.add_font(font_name, 'B', bld_p)
-        return True
+# --- 1. MATH LOGIC ENGINE (UNIQUE & REGROUPING CONTROL) ---
+def check_regrouping(a, b):
+    """Check if addition of a and b requires regrouping (carrying)."""
+    temp_a, temp_b = a, b
+    while temp_a > 0 or temp_b > 0:
+        if (temp_a % 10) + (temp_b % 10) >= 10:
+            return True
+        temp_a //= 10
+        temp_b //= 10
+    return False
 
-    def generate_content(self, title, school, teacher, problems, f_size, f_name, col_gap, row_gap, is_key=False):
-        # คำนวณจำนวนข้อต่อหน้า (อ้างอิงจากระยะที่ User ปรับ)
-        # พื้นที่ใช้งานแนวตั้งประมาณ 220mm (หัก Header/Footer)
-        row_h_mm = 15 + (row_gap / 4) 
-        probs_per_page = int(220 / row_h_mm) * 4
+def generate_math_data(num_probs, difficulty, mode):
+    """Generate unique problems based on level and regrouping mode."""
+    problems = []
+    seen = set()
+    
+    if difficulty == "Easy":
+        low, high = 1, 9
+    elif difficulty == "Medium":
+        low, high = 10, 99
+    else: # Hard
+        low, high = 100, 999
+
+    # Safety break to avoid infinite loop
+    max_possibilities = (high - low + 1)**2
+    target_num = min(num_probs, max_possibilities)
+
+    while len(problems) < target_num:
+        a = random.randint(low, high)
+        b = random.randint(low, high)
         
-        for i in range(0, len(problems), probs_per_page):
-            self.add_page()
-            page_probs = problems[i : i + probs_per_page]
+        if (a, b) in seen:
+            continue
             
-            # Header
-            self.set_font(f_name, 'B', 16)
-            self.cell(0, 10, school.upper(), ln=True, align='C')
-            self.set_font(f_name, 'B', f_size + 4)
-            self.cell(0, 15, f"{title}{' (Key)' if is_key else ''}", ln=True, align='C')
-            self.set_font(f_name, '', 10)
-            self.cell(90, 10, f"Teacher: {teacher}")
-            self.cell(0, 10, "Name: ________________ Score: ____", align='R', ln=True)
-            self.line(10, 48, self.w - 10, 48)
+        has_regrouping = check_regrouping(a, b)
+        
+        # Mode Logic: "Always", "Never", or "Mixed"
+        should_add = False
+        if mode == "Always Regrouping" and has_regrouping:
+            should_add = True
+        elif mode == "Never Regrouping" and not has_regrouping:
+            should_add = True
+        elif mode == "Mixed (Both)":
+            should_add = True
+            
+        if should_add:
+            problems.append({"a": a, "b": b})
+            seen.add((a, b))
+            
+    return problems
 
-            # Grid Render
-            col_w_mm = (self.w - 30) / 4 + (col_gap / 15)
-            for idx, p in enumerate(page_probs):
-                x = 15 + (idx % 4) * col_w_mm
-                y = 65 + (idx // 4) * row_h_mm
-                
-                self.set_xy(x, y)
-                self.set_font(f_name, '', 8); self.cell(5, 5, f"{i+idx+1})")
-                self.set_font(f_name, 'B', f_size)
-                self.set_xy(x+5, y); self.cell(20, 10, f"{p['a']:>3}", align='R', ln=True)
-                self.set_xy(x+5, y+8); self.cell(20, 10, f"+ {p['b']:>2}", align='R', ln=True)
-                self.set_line_width(0.6)
-                self.line(x+10, y+19, x+25, y+19)
-                
-                if is_key:
-                    self.set_text_color(220, 0, 0)
-                    self.set_xy(x+5, y+21); self.cell(20, 10, f"{p['a']+p['b']:>3}", align='R')
-                    self.set_text_color(0, 0, 0)
+# --- 2. PDF ENGINE (MULTI-FILE EXPORT) ---
+class MathWorksheetPDF(FPDF):
+    def __init__(self, paper_format='Letter'):
+        super().__init__(orientation='P', unit='mm', format=paper_format)
+        self.set_auto_page_break(auto=True, margin=15)
 
-# --- 2. MAIN APP ---
+    def generate_content(self, problems, title, school, teacher, f_size, is_key=False):
+        self.add_page()
+        
+        # Header Section
+        self.set_font('Courier', 'B', 16)
+        self.cell(0, 10, school.upper(), ln=True, align='C')
+        self.set_font('Courier', 'B', f_size + 2)
+        self.cell(0, 15, f"{title}{' (Answer Key)' if is_key else ''}", ln=True, align='C')
+        
+        # Info Section
+        self.set_font('Courier', '', 11)
+        self.cell(90, 10, f"Teacher: {teacher}")
+        self.cell(0, 10, "Name: ________________ Score: ____", align='R', ln=True)
+        self.line(10, 50, self.w - 10, 50)
+
+        # Grid Settings
+        x_start, y_start = 20, 65
+        col_w, row_h = (self.w - 40)/4, 35
+        
+        for idx, p in enumerate(problems):
+            col = idx % 4
+            row = (idx // 4) % 6 # Reset row position per page (approx 6 rows per page)
+            
+            # Auto Page Break Handling
+            if idx > 0 and idx % 24 == 0:
+                self.add_page()
+                # Re-draw line on new page for professional look
+                self.line(10, 20, self.w - 10, 20)
+                y_start = 30 
+            
+            x = x_start + (col * col_w)
+            y = y_start + (row * row_h) if idx < 24 else 30 + (row * row_h)
+            
+            self.set_xy(x, y)
+            self.set_font('Courier', '', 9); self.cell(5, 5, f"{idx+1})")
+            self.set_font('Courier', 'B', f_size)
+            self.set_xy(x+5, y); self.cell(20, 10, f"{p['a']:>3}", align='R', ln=True)
+            self.set_xy(x+5, y+8); self.cell(20, 10, f"+ {p['b']:>2}", align='R', ln=True)
+            self.set_line_width(0.6)
+            self.line(x+10, y+19, x+25, y+19)
+            
+            if is_key:
+                self.set_text_color(220, 0, 0)
+                self.set_xy(x+5, y+21); self.cell(20, 10, f"{p['a']+p['b']:>3}", align='R')
+                self.set_text_color(0, 0, 0)
+
+# --- 3. STREAMLIT APP UI ---
 def run_app():
-    st.title("⚡ MathPrepAI: Professional Synchronizer")
+    st.set_page_config(page_title="MathPrepAI Pro", layout="wide")
+    st.title("⚡ MathPrepAI: Professional Worksheet Builder")
 
     with st.sidebar:
-        st.header("📏 Layout Control")
-        paper = st.selectbox("Format", ["Letter", "A4"])
-        font_style = st.selectbox("Font", ["CourierPrime", "Roboto", "Lora"])
-        f_size = st.slider("Font Size", 16, 32, 24)
-        col_gap = st.slider("Column Spacing", 0, 100, 30)
-        row_gap = st.slider("Row Spacing", 0, 100, 40)
+        st.header("📏 Layout Configuration")
+        paper = st.selectbox("Paper Format", ["Letter", "A4"])
+        f_size = st.slider("Problem Font Size", 16, 32, 24)
         
-        st.header("🔢 Content")
-        num_probs = st.number_input("Total Problems", 1, 200, 48)
+        st.header("🔢 Math Logic")
+        diff = st.radio("Difficulty Level", ["Easy (1-Digit)", "Medium (2-Digits)", "Hard (3-Digits)"])
+        # Updated regrouping options
+        regroup_mode = st.selectbox("Regrouping Mode", 
+                                  ["Mixed (Both)", "Never Regrouping", "Always Regrouping"])
         
-        st.header("🏫 Branding")
-        school = st.text_input("School", "GLOBAL ACADEMY")
-        teacher = st.text_input("Teacher", "Mr. Smith")
-        title = st.text_input("Title", "Vertical Addition")
+        num_probs = st.number_input("Total Problems", 12, 120, 48, step=12)
+        
+        st.header("🏫 Branding & Label")
+        school = st.text_input("School Name", "Global Math Academy")
+        teacher = st.text_input("Teacher Name", "Mr. Smith")
+        title = st.text_input("Worksheet Title", "Vertical Addition")
 
-    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Numbers"):
-        st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(num_probs)]
+    # Generate or Reshuffle
+    if 'current_problems' not in st.session_state or st.button("🔀 Generate New Problems"):
+        level = diff.split(" ")[0]
+        st.session_state.current_problems = generate_math_data(num_probs, level, regroup_mode)
 
-    # --- 3. SYNC PREVIEW LOGIC ---
-    font_css = "'Courier Prime', monospace" if font_style == "CourierPrime" else font_style
+    # --- Smart Layout Check ---
+    probs_per_page = 24
+    total_pages = (len(st.session_state.current_problems) - 1) // probs_per_page + 1
+    st.sidebar.info(f"📊 Layout Status: {total_pages} Page(s) will be generated.")
+
+    # --- Preview Section ---
+    st.subheader("📄 Live Worksheet Preview")
+    
+    # Simple CSS for Preview
     aspect = 1.29 if paper == "Letter" else 1.41
-    
-    # คำนวณจำนวนข้อต่อหน้าให้ตรงกับ PDF
-    row_h_px = 140 + row_gap 
-    probs_per_page = 24 # ค่าเริ่มต้นสำหรับการคำนวณ Preview
-    
-    pages_html = ""
-    for p_idx in range(0, len(st.session_state.current_math), probs_per_page):
-        page_probs = st.session_state.current_math[p_idx : p_idx + probs_per_page]
-        
-        items_html = "".join([f"""
-            <div style="width: 100px; font-family: {font_css}; color: black; position: relative; margin-bottom: {row_gap}px;">
-                <span style="position: absolute; left: -10px; top: 0; font-size: 10px; color: #888;">{p_idx+i+1})</span>
-                <table style="width: 75px; margin-left: auto; border-collapse: collapse; font-weight: bold; font-size: {f_size}px;">
-                    <tr><td colspan="2" style="text-align: right; padding-right: 5px;">{p['a']}</td></tr>
-                    <tr style="border-bottom: 3px solid black;">
-                        <td style="text-align: left; width: 25px; vertical-align: bottom; padding-bottom: 2px;">+</td>
-                        <td style="text-align: right; padding-right: 5px; padding-bottom: 2px;">{p['b']}</td>
-                    </tr>
-                </table>
-            </div>
-        """ for i, p in enumerate(page_probs)])
-
-        pages_html += f"""
-        <div class="sheet">
-            <div class="header">
-                <h2 style="margin: 0;">{school.upper()}</h2>
-                <h1 style="margin: 10px 0;">{title}</h1>
-                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
-                    <span>Teacher: {teacher}</span>
-                    <span>Name: ________________ Score: ____</span>
-                </div>
-            </div>
-            <div class="grid" style="column-gap: {col_gap}px;">{items_html}</div>
-            <div class="footer">Page {p_idx//probs_per_page + 1}</div>
+    items_html = "".join([f"""
+        <div style="width: 20%; padding: 15px; font-family: monospace; font-size: {f_size}px; font-weight: bold; text-align: right;">
+            <div style="font-size: 10px; color: gray; text-align: left;">{i+1})</div>
+            {p['a']}<br>+ {p['b']}<br><hr style="border: 2px solid black; margin: 2px 0;">
         </div>
-        """
+    """ for i, p in enumerate(st.session_state.current_problems[:12])]) # Show only first 12 for preview
 
-    full_html = f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&family=Roboto:wght@700&family=Lora:wght@700&display=swap');
-        body {{ background: #555; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }}
-        .sheet {{ width: 750px; height: {750 * aspect}px; background: white; padding: 50px; margin-bottom: 30px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; box-sizing: border-box; }}
-        .header {{ text-align: center; border-bottom: 2px solid black; margin-bottom: 30px; font-family: sans-serif; }}
-        .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); }}
-        .footer {{ position: absolute; bottom: 20px; right: 50px; font-size: 12px; font-family: sans-serif; }}
-    </style>
-    {pages_html}
+    preview_html = f"""
+    <div style="background: white; padding: 40px; border: 1px solid #ccc; width: 100%; min-height: 400px; color: black;">
+        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 20px;">
+            <h2 style="margin: 0;">{school.upper()}</h2>
+            <h3 style="margin: 5px 0;">{title}</h3>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-around;">{items_html}</div>
+        <div style="margin-top: 20px; text-align: center; color: #888; font-style: italic;">... Previewing first 12 problems ...</div>
+    </div>
     """
-    
-    components.html(full_html, height=800, scrolling=True)
+    st.components.v1.html(preview_html, height=500, scrolling=True)
 
-    # --- 4. EXPORT ---
+    # --- Export Section ---
     st.markdown("---")
-    pdf = GlobalMathPDF(format=paper)
-    if pdf.setup_fonts(font_style):
-        # สร้างไฟล์ PDF ตาม Logic หน้าเดียวกับพรีวิว
-        pdf.generate_content(title, school, teacher, st.session_state.current_math, f_size, font_style, col_gap, row_gap, False)
-        # เพิ่มหน้าเฉลย
-        pdf.generate_content(title, school, teacher, st.session_state.current_math, f_size, font_style, col_gap, row_gap, True)
-        
-        st.download_button("📥 Download Multi-Page PDF", data=bytes(pdf.output()), file_name=f"{title}.pdf")
+    st.subheader("📥 Export Final Files")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Worksheet Export
+        pdf_ws = MathWorksheetPDF(paper_format=paper)
+        pdf_ws.generate_content(st.session_state.current_problems, title, school, teacher, f_size, is_key=False)
+        st.download_button(
+            label="📝 Download Worksheet (PDF)",
+            data=bytes(pdf_ws.output()),
+            file_name=f"{title.replace(' ', '_')}_Worksheet.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+    with col2:
+        # Answer Key Export
+        pdf_key = MathWorksheetPDF(paper_format=paper)
+        pdf_key.generate_content(st.session_state.current_problems, title, school, teacher, f_size, is_key=True)
+        st.download_button(
+            label="🔑 Download Answer Key (PDF)",
+            data=bytes(pdf_key.output()),
+            file_name=f"{title.replace(' ', '_')}_Answer_Key.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
 if __name__ == "__main__":
     run_app()
