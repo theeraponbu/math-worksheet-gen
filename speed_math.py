@@ -23,7 +23,7 @@ class MathProPDF(FPDF):
             self.add_page()
             page_probs = problems[p_idx : p_idx + probs_per_page]
             
-            # Header
+            # Header Area
             self.set_font(self.f_family, 'B', 16)
             self.cell(0, 10, school.upper(), ln=True, align='C')
             self.set_font(self.f_family, style, f_size + 4)
@@ -37,13 +37,13 @@ class MathProPDF(FPDF):
                 self.cell(0, 8, "Name: ________________________________________________ Score: ____", align='L', ln=True)
             self.line(10, 45, self.w - 10, 45)
 
-            # Strict Box Logic
-            col_w = (self.w - 30) / 4 + (col_gap / 20)
-            row_h = 28 + (row_gap / 10) 
+            # --- STRICT BOX LOGIC ---
+            col_width = (self.w - 30) / 4 + (col_gap / 20)
+            row_height = 28 + (row_gap / 10) 
             
             for i, p in enumerate(page_probs):
                 col_i, row_i = i % 4, i // 4
-                x, y = 15 + col_i * col_w, 55 + row_i * row_h
+                x, y = 15 + col_i * col_width, 55 + row_i * row_height
                 num = (i + 1) if restart_num else (p_idx + i + 1)
                 
                 self.set_xy(x, y)
@@ -52,18 +52,18 @@ class MathProPDF(FPDF):
                 self.set_xy(x+5, y+2); self.cell(18, 10, f"{p['a']:>3}", align='R')
                 self.set_xy(x+5, y+10); self.cell(18, 10, f"+ {p['b']:>2}", align='R')
                 self.set_line_width(0.5)
-                self.line(x+11, y+18, x+24, y+18)
+                self.line(x+11, y+21, x+24, y+21)
                 
                 if is_key:
                     self.set_text_color(220, 0, 0)
                     self.set_xy(x+5, y+22.5); self.cell(18, 10, f"{p['a']+p['b']:>3}", align='R')
                     self.set_text_color(0, 0, 0)
 
-# --- 2. MAIN APP ---
+# --- 2. MAIN APP & SYNC PREVIEW ---
 def run_app():
-    st.set_page_config(page_title="MathPrepAI Master", layout="wide")
+    st.set_page_config(page_title="MathPrepAI Perfect Sync", layout="wide")
 
-    # --- 2.1 INITIALIZE VARIABLES (ป้องกัน NameError) ---
+    # Sidebar
     with st.sidebar:
         st.header("🏫 Branding")
         school = st.text_input("School Name", "Global Academy")
@@ -71,7 +71,7 @@ def run_app():
         teacher = st.text_input("Teacher Name", "Mr. Smith")
         show_teacher = st.checkbox("Include Teacher Name", value=True)
 
-        st.header("📐 Style & Layout")
+        st.header("📐 Layout Control")
         font_name = st.selectbox("Font", ["CourierPrime", "Roboto", "Lora"])
         f_style = st.selectbox("Weight", ["Regular", "B", "I", "BI"])
         f_size = st.slider("Size", 16, 32, 22)
@@ -84,35 +84,44 @@ def run_app():
         num_pages = st.selectbox("Download Pages", [1, 10, 20, 30])
         restart_num = st.checkbox("Restart No. per page", value=False)
 
-    # Business Logic
     total_probs = probs_per_page * num_pages
     if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Data"):
         st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(total_probs)]
 
-    # --- 2.2 PERFECT PREVIEW ---
+    # --- PERFECT SYNC PREVIEW ---
     st.subheader("🖥️ Synchronized Paper View")
-    preview_mode = st.radio("Mode:", ["Worksheet", "Answer Key"], horizontal=True)
+    preview_mode = st.radio("Display Mode:", ["Worksheet", "Answer Key"], horizontal=True)
     is_key = (preview_mode == "Answer Key")
     font_css = "monospace" if font_name == "CourierPrime" else "sans-serif"
     aspect = 1.29 if paper == "Letter" else 1.41
     
-    # HTML Items (ล็อกกล่องโจทย์เหมือน PDF)
+    # คำนวณขนาดกล่องเพื่อให้แสดงผลครบ 24 ข้อ (หรือตามจำนวนที่เลือก)
+    # เราบังคับให้กล่องโจทย์แต่ละข้อใน HTML มีความสูงสัมพันธ์กับ PDF
+    box_h_px = 110 + (row_gap / 1.5)
+    num_rows = probs_per_page // 4
+    total_content_h = (num_rows * (box_h_px + 20)) + 250 # รวมพื้นที่ Header
+    
+    # ตรวจสอบว่าพื้นที่กระดาษในพรีวิวต้องกว้างเท่าไหร่เพื่อให้เห็นครบหน้า
+    sheet_height = 700 * aspect
+    # หากเนื้อหาโจทย์เยอะกว่าความสูงมาตรฐาน ให้ขยายความสูงกระดาษพรีวิว
+    actual_sheet_h = max(sheet_height, total_content_h)
+
     items_html = "".join([f"""
-        <div style="width: 22%; height: {100 + row_gap}px; margin-bottom: 10px; font-family: {font_css}; color: black; font-size: {f_size}px; position: relative;">
+        <div style="width: 22%; height: {box_h_px}px; margin-bottom: 20px; font-family: {font_css}; color: black; font-size: {f_size}px; position: relative;">
             <div style="font-size: 10px; color: #999; text-align: left;">{i+1})</div>
-            <div style="text-align: right; padding-right: 15px; font-weight: {'bold' if 'B' in f_style else 'normal'}; font-style: {'italic' if 'I' in f_style else 'normal'};">
+            <div style="text-align: right; padding-right: 15px; font-weight: {'bold' if 'B' in f_style else 'normal'};">
                 {p['a']}<br>+ {p['b']}<br>
-                <div style="border-top: 2.5px solid black; width: 42px; margin-left: auto; margin-top: 1px;"></div>
+                <div style="border-top: 2.5px solid black; width: 42px; margin-left: auto; margin-top: 2px;"></div>
                 <div style="color: #d00; height: 30px; margin-top: 2px;">{p['a']+p['b'] if is_key else '&nbsp;'}</div>
             </div>
         </div>
     """ for i, p in enumerate(st.session_state.current_math[:probs_per_page])])
 
-    # ปรับความสูงพรีวิวและเพิ่มพื้นที่สโครลให้เห็นขอบล่างชัดเจน
+    # ปรับปรุงความสูงของ components.html ให้สูงพอที่จะไม่โดนตัดขอบล่าง
     components.html(f"""
-        <div style="background: #444; display: flex; flex-direction: column; align-items: center; padding: 100px 0; min-height: 1200px; overflow-y: auto;">
-            <div style="width: 700px; height: {700 * aspect}px; background: white; padding: 50px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); box-sizing: border-box; flex-shrink: 0; position: relative;">
-                <div style="text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; color: black; font-family: sans-serif;">
+        <div style="background: #444; display: flex; flex-direction: column; align-items: center; padding: 100px 0; min-height: {actual_sheet_h + 300}px; overflow-y: auto;">
+            <div style="width: 700px; height: {actual_sheet_h}px; background: white; padding: 50px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); box-sizing: border-box; flex-shrink: 0; position: relative;">
+                <div style="text-align: center; border-bottom: 2px solid #000; margin-bottom: 25px; color: black; font-family: sans-serif;">
                     <h2 style="margin: 0; font-size: 20px;">{school.upper()}</h2>
                     <h1 style="margin: 5px 0; font-size: 28px;">{title}</h1>
                     <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; padding: 10px 0;">
@@ -127,7 +136,7 @@ def run_app():
         </div>
     """, height=1000)
 
-    # --- 2.3 DOWNLOAD BUTTONS ---
+    # Export Section
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
