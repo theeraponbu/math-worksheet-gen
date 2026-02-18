@@ -7,7 +7,7 @@ from pptx.util import Inches, Pt
 import io
 import os
 
-# --- 1. PDF ENGINE (HIGH PRECISION SYNC) ---
+# --- 1. PDF ENGINE (HIGH-PRECISION LAYOUT) ---
 class MathProPDF(FPDF):
     def __init__(self, paper_format='Letter'):
         super().__init__(orientation='P', unit='mm', format=paper_format)
@@ -27,7 +27,7 @@ class MathProPDF(FPDF):
             self.add_page()
             page_probs = problems[p_idx : p_idx + probs_per_page]
             
-            # Header
+            # Header Section (Fixed at top)
             self.set_font(self.f_family, 'B', 16)
             self.cell(0, 10, school.upper(), ln=True, align='C')
             self.set_font(self.f_family, style, f_size + 4)
@@ -42,7 +42,7 @@ class MathProPDF(FPDF):
             
             self.line(10, 45, self.w - 10, 45)
 
-            # Grid Layout (Calculated for Perfect Sync)
+            # Grid Calculation (Matching Preview)
             col_w = (self.w - 30) / 4 + (col_gap / 20)
             row_h = 18 + (row_gap / 5)
             
@@ -60,36 +60,24 @@ class MathProPDF(FPDF):
                 self.set_xy(x+5, y); self.cell(18, 10, f"{p['a']:>3}", align='R', ln=True)
                 self.set_xy(x+5, y+8); self.cell(18, 10, f"+ {p['b']:>2}", align='R', ln=True)
                 
-                # เส้นคั่นแบบสั้น (Clean Short Line)
+                # Short Answer Line (Clean Look)
                 self.set_line_width(0.5)
-                self.line(x+11, y+18, x+24, y+18)
+                self.line(x+12, y+18, x+24, y+18)
                 
                 if is_key:
                     self.set_text_color(220, 0, 0)
                     self.set_xy(x+5, y+19); self.cell(18, 10, f"{p['a']+p['b']:>3}", align='R')
                     self.set_text_color(0, 0, 0)
 
-# --- 2. POWERPOINT ENGINE (WITH REAL DATA) ---
-def build_pptx(problems, title, probs_per_page, font_name):
+# --- 2. POWERPOINT ENGINE (FIXED CONTENT) ---
+def build_pptx(problems, title, probs_per_page):
     prs = Presentation()
     for i in range(0, len(problems), probs_per_page):
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         page_probs = problems[i : i + probs_per_page]
-        
-        # Slide Title
-        tx_title = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(0.8))
-        tx_title.text_frame.text = f"{title} - Page {int(i/probs_per_page)+1}"
-        
         for idx, p in enumerate(page_probs):
-            left = Inches(0.5 + (idx % 4) * 2.3)
-            top = Inches(1.2 + (idx // 4) * 1.3)
-            box = slide.shapes.add_textbox(left, top, Inches(2), Inches(1))
-            tf = box.text_frame
-            p_para = tf.add_paragraph()
-            p_para.text = f"{p['a']} + {p['b']} = ____"
-            p_para.font.size = Pt(24)
-            p_para.font.bold = True
-            
+            left, top = Inches(0.5 + (idx % 4) * 2.3), Inches(1.5 + (idx // 4) * 1.5)
+            slide.shapes.add_textbox(left, top, Inches(2), Inches(1)).text_frame.text = f"{p['a']} + {p['b']} = ?"
     buffer = io.BytesIO()
     prs.save(buffer)
     return buffer.getvalue()
@@ -109,40 +97,40 @@ def run_app():
     st.set_page_config(page_title="MathPrepAI Synchronizer", layout="wide")
     
     with st.sidebar:
-        st.header("📐 Master Style")
+        st.header("📐 Style & Layout")
         font_name = st.selectbox("Font", ["CourierPrime", "Roboto", "Lora"])
         f_style = st.selectbox("Weight", ["Regular", "B", "I", "BI"])
         f_size = st.slider("Text Size", 16, 32, 22)
-        col_gap = st.slider("Col Gap", 0, 100, 30)
-        row_gap = st.slider("Row Gap", 0, 100, 40)
+        col_gap = st.slider("Column Spacing", 0, 100, 30)
+        row_gap = st.slider("Row Spacing", 0, 100, 40)
         
-        st.header("📄 Page Setup")
-        paper = st.selectbox("Paper", ["Letter", "A4"])
+        st.header("📄 Page Control")
+        paper = st.selectbox("Paper Format", ["Letter", "A4"])
         probs_per_page = st.selectbox("Items Per Page", [12, 16, 20, 24, 28, 32], index=3)
         num_pages = st.selectbox("Download Pages", [1, 10, 20, 30])
         restart_num = st.checkbox("Restart No. per page", value=False)
         
-        st.header("🏫 Identity")
+        st.header("🏫 Branding")
         show_teacher = st.checkbox("Include Teacher", value=True)
         school = st.text_input("School Name", "Global Academy")
         teacher = st.text_input("Teacher Name", "Mr. Smith")
         title = st.text_input("Worksheet Title", "Vertical Addition")
 
     total_probs = probs_per_page * num_pages
-    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Numbers"):
+    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Data"):
         st.session_state.current_math = generate_math_data(total_probs, "Medium")
 
     # --- PERFECT SYNC PREVIEW ---
-    st.subheader("🖥️ Realistic Paper Preview")
-    preview_mode = st.radio("Displaying:", ["Worksheet", "Answer Key"], horizontal=True)
+    st.subheader("🖥️ Synchronized Paper View")
+    preview_mode = st.radio("Mode:", ["Worksheet", "Answer Key"], horizontal=True)
     
     is_key = (preview_mode == "Answer Key")
     font_css = "monospace" if font_name == "CourierPrime" else "sans-serif"
     aspect = 1.29 if paper == "Letter" else 1.41
     
-    # HTML Items Generation
+    # HTML Items
     items_html = "".join([f"""
-        <div style="width: 22%; margin-bottom: {row_gap/1.6}px; font-family: {font_css}; color: black; font-size: {f_size}px; line-height: 1.1;">
+        <div style="width: 22%; margin-bottom: {row_gap/1.6}px; font-family: {font_css}; color: black; font-size: {f_size}px;">
             <div style="font-size: 10px; color: #999; text-align: left;">{i+1})</div>
             <div style="text-align: right; padding-right: 12px; font-weight: {'bold' if 'B' in f_style else 'normal'}; font-style: {'italic' if 'I' in f_style else 'normal'};">
                 {p['a']}<br>+ {p['b']}<br>
@@ -152,10 +140,10 @@ def run_app():
         </div>
     """ for i, p in enumerate(st.session_state.current_math[:probs_per_page])])
 
-    # Realistic Container
+    # Realistic Container with Gray Space top/bottom
     components.html(f"""
-        <div style="background: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 850px; overflow: hidden;">
-            <div style="width: 680px; height: {680 * aspect}px; background: white; padding: 45px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); box-sizing: border-box;">
+        <div style="background: #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 40px 0; min-height: 900px;">
+            <div style="width: 650px; height: {650 * aspect}px; background: white; padding: 45px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); box-sizing: border-box; position: relative;">
                 <div style="text-align: center; border-bottom: 2px solid #000; margin-bottom: 15px; color: black; font-family: sans-serif;">
                     <h3 style="margin: 0; font-size: 18px;">{school.upper()}</h3>
                     <h2 style="margin: 5px 0; font-size: 24px;">{title}</h2>
@@ -167,26 +155,26 @@ def run_app():
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-around; align-content: flex-start;">{items_html}</div>
             </div>
         </div>
-    """, height=850)
+    """, height=950)
 
     st.markdown("---")
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("📥 PDF Files (Standard)")
+        st.subheader("📥 PDF Files")
         pdf = MathProPDF(paper_format=paper)
         pdf.setup_fonts(font_name)
         pdf.generate_sheet(st.session_state.current_math, title, school, teacher, f_size, f_style, col_gap, row_gap, False, probs_per_page, restart_num, show_teacher)
-        st.download_button("📝 Download Worksheet (PDF)", data=bytes(pdf.output()), file_name=f"{title}.pdf", use_container_width=True)
+        st.download_button("📝 Download Worksheet", data=bytes(pdf.output()), file_name=f"{title}.pdf", use_container_width=True)
         
         pdf_k = MathProPDF(paper_format=paper)
         pdf_k.setup_fonts(font_name)
         pdf_k.generate_sheet(st.session_state.current_math, title, school, teacher, f_size, f_style, col_gap, row_gap, True, probs_per_page, restart_num, show_teacher)
-        st.download_button("🔑 Download Answer Key (PDF)", data=bytes(pdf_k.output()), file_name=f"{title}_Key.pdf", use_container_width=True)
+        st.download_button("🔑 Download Answer Key", data=bytes(pdf_k.output()), file_name=f"{title}_Key.pdf", use_container_width=True)
     
     with c2:
-        st.subheader("📥 Digital Format (Editable)")
-        ppt_data = build_pptx(st.session_state.current_math, title, probs_per_page, font_name)
-        st.download_button("📊 Download PowerPoint (PPTX)", data=ppt_data, file_name=f"{title}.pptx", use_container_width=True)
+        st.subheader("📥 Digital Format")
+        ppt_data = build_pptx(st.session_state.current_math, title, probs_per_page)
+        st.download_button("📊 Download PowerPoint", data=ppt_data, file_name=f"{title}.pptx", use_container_width=True)
 
 if __name__ == "__main__":
     run_app()
