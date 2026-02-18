@@ -17,7 +17,7 @@ SECRET_KEY = "MATH_PREP_SECRET_99" # ต้องตรงกับใน WordPr
 
 def validate_access(token, uid):
     if not token or not uid: return False
-    timestamp = datetime.now().strftime('%Y%m%d%H')
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H')
     expected_token = hmac.new(
         SECRET_KEY.encode(),
         (str(uid) + timestamp).encode(),
