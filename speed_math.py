@@ -4,7 +4,7 @@ import random
 from fpdf import FPDF
 import io
 
-# --- 1. PDF ENGINE (STRICT BOX LOCKING) ---
+# --- 1. PDF ENGINE (STRICT BOX MAPPING) ---
 class MathProPDF(FPDF):
     def __init__(self, paper_format='Letter'):
         super().__init__(orientation='P', unit='mm', format=paper_format)
@@ -23,11 +23,11 @@ class MathProPDF(FPDF):
             self.add_page()
             page_probs = problems[p_idx : p_idx + probs_per_page]
             
-            # --- Header Area (0-45mm) ---
+            # --- Header: Fixed 45mm ---
             self.set_font(self.f_family, 'B', 16)
             self.cell(0, 10, school.upper(), ln=True, align='C')
             self.set_font(self.f_family, style, f_size + 4)
-            self.cell(0, 12, f"{title}{' (Answer Key)' if is_key else ''}", ln=True, align='C')
+            self.cell(0, 12, f"{title}{' (Key)' if is_key else ''}", ln=True, align='C')
             
             self.set_font(self.f_family, '', 10)
             if show_teacher and teacher:
@@ -37,47 +37,35 @@ class MathProPDF(FPDF):
                 self.cell(0, 8, "Name: ________________________________________________ Score: ____", align='L', ln=True)
             self.line(10, 45, self.w - 10, 45)
 
-            # --- Grid Area (Strict Box Mapping) ---
+            # --- BOX LOGIC ---
             col_w = (self.w - 30) / 4 + (col_gap / 20)
-            row_h = 28 + (row_gap / 10) 
+            box_h = 28 + (row_gap / 10) # ล็อกความสูงกล่องแต่ละข้อให้คงที่
             
             for i, p in enumerate(page_probs):
                 col_i, row_i = i % 4, i // 4
-                x, y = 15 + col_i * col_w, 55 + row_i * row_h
+                x, y = 15 + col_i * col_w, 55 + row_i * box_h
                 
                 num = (i + 1) if restart_num else (p_idx + i + 1)
                 self.set_xy(x, y)
                 self.set_font(self.f_family, '', 8); self.cell(5, 5, f"{num})")
                 
-                # ตัวเลขโจทย์
                 self.set_font(self.f_family, style, f_size)
-                self.set_xy(x+5, y+2); self.cell(20, 10, f"{p['a']:>3}", align='R')
-                self.set_xy(x+5, y+10); self.cell(20, 10, f"+ {p['b']:>2}", align='R')
+                self.set_xy(x+5, y+2); self.cell(18, 10, f"{p['a']:>3}", align='R')
+                self.set_xy(x+5, y+10); self.cell(18, 10, f"+ {p['b']:>2}", align='R')
                 
-                # เส้นคั่นแบบสั้น
                 self.set_line_width(0.5)
-                self.line(x+12, y+21, x+25, y+21)
+                self.line(x+11, y+21, x+24, y+21)
                 
-                # ส่วนเฉลย
                 if is_key:
                     self.set_text_color(220, 0, 0)
-                    self.set_xy(x+5, y+22.5); self.cell(20, 10, f"{p['a']+p['b']:>3}", align='R')
+                    self.set_xy(x+5, y+22.5); self.cell(18, 10, f"{p['a']+p['b']:>3}", align='R')
                     self.set_text_color(0, 0, 0)
 
-# --- 2. MATH LOGIC ---
-def generate_math_data(num, diff):
-    problems, seen = [], set()
-    low, high = (1, 9) if diff == "Easy" else (10, 99) if diff == "Medium" else (100, 999)
-    while len(problems) < num:
-        a, b = random.randint(low, high), random.randint(low, high)
-        if (a, b) not in seen:
-            problems.append({"a": a, "b": b}); seen.add((a, b))
-    return problems
-
-# --- 3. MAIN APP ---
+# --- 2. MAIN APP & SYNC PREVIEW ---
 def run_app():
     st.set_page_config(page_title="MathPrepAI Master", layout="wide")
-    
+    st.title("⚡ Math Drills: Perfect Full-Page Sync")
+
     with st.sidebar:
         st.header("📐 Style & Layout")
         font_name = st.selectbox("Font", ["CourierPrime", "Roboto", "Lora"])
@@ -86,46 +74,49 @@ def run_app():
         col_gap = st.slider("Col Gap", 0, 100, 30)
         row_gap = st.slider("Row Gap", 0, 100, 40)
         
-        st.header("📄 Page Setup")
-        paper = st.selectbox("Paper", ["Letter", "A4"])
+        st.header("📄 Page Control")
+        paper = st.selectbox("Format", ["Letter", "A4"])
         probs_per_page = st.selectbox("Items Per Page", [12, 16, 20, 24, 28, 32], index=3)
-        num_pages = st.selectbox("Download Pages", [1, 10, 20, 30])
+        num_pages = st.selectbox("Total Pages", [1, 10, 20, 30])
         restart_num = st.checkbox("Restart No. per page", value=False)
         
-        st.header("🏫 Branding")
-        show_teacher = st.checkbox("Include Teacher Name", value=True)
-        school = st.text_input("School Name", "Global Academy")
-        teacher = st.text_input("Teacher Name", "Mr. Smith")
-        title = st.text_input("Worksheet Title", "Vertical Addition")
+        st.header("🏫 Identity")
+        show_teacher = st.checkbox("Include Teacher", value=True)
+        school = st.text_input("School", "Global Academy")
+        teacher = st.text_input("Teacher", "Mr. Smith")
+        title = st.text_input("Title", "Vertical Addition")
 
+    # Generate Logic
     total_probs = probs_per_page * num_pages
-    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Data"):
-        st.session_state.current_math = generate_math_data(total_probs, "Medium")
+    if 'current_math' not in st.session_state or st.button("🔀 Reshuffle Numbers"):
+        st.session_state.current_math = [{"a": random.randint(10, 99), "b": random.randint(10, 99)} for _ in range(total_probs)]
 
-    # --- PERFECT SYNC PREVIEW ---
-    st.subheader("🖥️ Synchronized Paper Preview")
-    preview_mode = st.radio("Previewing:", ["Worksheet", "Answer Key"], horizontal=True)
-    
+    # --- FULL-PAGE PREVIEW LOGIC ---
+    st.subheader("🖥️ Synchronized Paper View")
+    preview_mode = st.radio("Mode:", ["Worksheet", "Answer Key"], horizontal=True)
     is_key = (preview_mode == "Answer Key")
     font_css = "monospace" if font_name == "CourierPrime" else "sans-serif"
     aspect = 1.29 if paper == "Letter" else 1.41
     
-    # HTML Items
+    # คำนวณความสูงพรีวิว (ต้องสัมพันธ์กับ row_gap เพื่อไม่ให้ข้อล่างสุดจม)
+    # 700px คือความกว้างกระดาษใน HTML
+    sheet_height = 700 * aspect
+    
     items_html = "".join([f"""
-        <div style="width: 22%; height: {100 + row_gap}px; margin-bottom: 15px; font-family: {font_css}; color: black; font-size: {f_size}px; position: relative;">
+        <div style="width: 22%; height: {100 + row_gap}px; margin-bottom: 10px; font-family: {font_css}; color: black; font-size: {f_size}px; position: relative;">
             <div style="font-size: 10px; color: #999; text-align: left;">{i+1})</div>
-            <div style="text-align: right; padding-right: 15px; font-weight: {'bold' if 'B' in f_style else 'normal'}; font-style: {'italic' if 'I' in f_style else 'normal'};">
+            <div style="text-align: right; padding-right: 15px; font-weight: {'bold' if 'B' in f_style else 'normal'};">
                 {p['a']}<br>+ {p['b']}<br>
                 <div style="border-top: 2.5px solid black; width: 42px; margin-left: auto; margin-top: 2px;"></div>
-                <div style="color: #d00; height: 30px; margin-top: 2px;">{p['a']+p['b'] if is_key else '&nbsp;'}</div>
+                <div style="color: #d00; height: 30px;">{p['a']+p['b'] if is_key else '&nbsp;'}</div>
             </div>
         </div>
     """ for i, p in enumerate(st.session_state.current_math[:probs_per_page])])
 
-    # Realistic Container (เห็นขอบ บน-ล่าง ชัดเจน)
+    # ปรับปรุงระบบพรีวิวให้เห็นครบหน้า และมีพื้นที่สีเทาปิดท้าย
     components.html(f"""
-        <div style="background: #444; display: flex; flex-direction: column; align-items: center; padding: 100px 0; min-height: 1200px; overflow-y: auto;">
-            <div style="width: 700px; height: {700 * aspect}px; background: white; padding: 50px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); box-sizing: border-box; flex-shrink: 0; position: relative;">
+        <div style="background: #444; display: flex; flex-direction: column; align-items: center; padding: 100px 0; min-height: 1200px; overflow-y: auto; scrollbar-width: thin;">
+            <div style="width: 700px; height: {sheet_height}px; background: white; padding: 50px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); box-sizing: border-box; flex-shrink: 0; position: relative;">
                 <div style="text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; color: black; font-family: sans-serif;">
                     <h2 style="margin: 0; font-size: 20px;">{school.upper()}</h2>
                     <h1 style="margin: 5px 0; font-size: 28px;">{title}</h1>
@@ -137,18 +128,19 @@ def run_app():
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-around; align-content: flex-start;">{items_html}</div>
                 <div style="position: absolute; bottom: 30px; right: 50px; color: #888; font-family: sans-serif; font-size: 12px;">Page 1</div>
             </div>
-            <div style="height: 100px; width: 100%;"></div> </div>
-    """, height=900)
+            <div style="height: 150px; width: 100%;"></div>
+        </div>
+    """, height=1000) # เพิ่มความสูงของกรอบแสดงผลใน Streamlit
 
     # --- DOWNLOADS ---
     st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
+    c1, c2 = st.columns(2)
+    with c1:
         pdf_ws = MathProPDF(paper_format=paper)
         pdf_ws.setup_fonts(font_name)
         pdf_ws.generate_sheet(st.session_state.current_math, title, school, teacher, f_size, f_style, col_gap, row_gap, False, probs_per_page, restart_num, show_teacher)
         st.download_button("📝 Download Worksheet (PDF)", data=bytes(pdf_ws.output()), file_name=f"{title}.pdf", use_container_width=True)
-    with col2:
+    with c2:
         pdf_k = MathProPDF(paper_format=paper)
         pdf_k.setup_fonts(font_name)
         pdf_k.generate_sheet(st.session_state.current_math, title, school, teacher, f_size, f_style, col_gap, row_gap, True, probs_per_page, restart_num, show_teacher)
