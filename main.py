@@ -26,20 +26,15 @@ def validate_access(token, uid):
     ).hexdigest()
     return hmac.compare_digest(token, expected_token)
 
-# --- 2. GET ACCESS DATA FROM URL ---
-# ดึงค่าครั้งเดียวตอนโหลดแอปเพื่อป้องกัน Redirect Loop
-if 'access_verified' not in st.session_state:
-    params = st.query_params
-    token = params.get("token")
-    uid = params.get("uid")
-    tier_from_url = params.get("tier", "free")
-    
-    if validate_access(token, uid):
-        st.session_state.access_verified = True
-        st.session_state.user_tier = tier_from_url
-        st.session_state.uid = uid
-    else:
-        st.session_state.access_verified = False
+# --- 2. MOCK DATA FOR TESTING (กำหนดค่าหลอกที่นี่) ---
+# เราจะข้ามการเช็ค Token และกำหนดค่าให้โปรแกรมเลย
+st.session_state.access_verified = True
+st.session_state.user_tier = "pro_seller" # กำหนดเป็นโปรไปเลยเพื่อดูฟีเจอร์ครบๆ
+st.session_state.uid = "test_user_001"
+
+# ดึงค่ามาใส่ตัวแปรใช้งาน
+user_tier = st.session_state.user_tier
+uid = st.session_state.uid
 
 # --- 3. CHECK ACCESS ---
 #if not st.session_state.access_verified:
