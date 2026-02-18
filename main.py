@@ -38,8 +38,11 @@ if 'access_verified' not in st.session_state:
         st.session_state.user_tier = tier_from_url
         st.session_state.uid = uid
     else:
+        # บรรทัดนี้จะช่วยเราแก้ปัญหาได้ครับ!
+        st.error(f"DEBUG: UID={uid}, Token_Received={token}")
+        st.write(f"Server_Time_UTC: {datetime.utcnow().strftime('%Y%m%d%H')}")
         st.session_state.access_verified = False
-
+        
 # --- 3. CHECK ACCESS ---
 if not st.session_state.access_verified:
     st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
