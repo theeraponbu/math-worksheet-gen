@@ -4,3 +4,4 @@ numpy
 reportlab
 pypdf2
 fpdf2
+python-pptx
