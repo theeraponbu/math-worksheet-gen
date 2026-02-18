@@ -5,134 +5,71 @@ import shape_master
 import graphing_notebook
 import clock_generator
 import pdf_editor
+import hashlib
+import hmac
+from datetime import datetime
 
-# --- 1. GLOBAL CONFIGURATION ---
-st.set_page_config(
-    page_title="MathPrepAI Ultimate Pro",
-    page_icon="🎓",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- 1. ระบบรักษาความปลอดภัย (ต้องตรงกับใน WordPress) ---
+SECRET_KEY = "MATH_PREP_SECRET_99" # รหัสลับเดียวกับที่ใส่ใน WPCode
 
-# --- 2. STATE MANAGEMENT (ควบคุมการเปลี่ยนหน้า) ---
-# ตรวจสอบว่ามีค่า menu_choice ในระบบหรือยัง ถ้าไม่มีให้เริ่มที่ Dashboard
-if 'menu_choice' not in st.session_state:
-    st.session_state.menu_choice = "🏠 Dashboard"
-
-# --- 3. THE TESTING SUITE (ADMIN TOGGLE) ---
-st.sidebar.title("🔐 Tier Testing (Admin)")
-user_tier = st.sidebar.radio(
-    "Switch Access Level:",
-    [
-        "Free Tier (Teaching Only)", 
-        "Personal Pro (Personal Use)", 
-        "Commercial Enterprise (Full Access)"
-    ],
-    help="Select a tier to test features and licensing watermarks."
-)
-
-# ส่งค่า Tier ไปยัง Session State ให้ไฟล์อื่นใช้งาน
-st.session_state.tier = user_tier
-
-if user_tier == "Commercial Enterprise (Full Access)":
-    st.sidebar.success("🚀 FULL COMMERCIAL ACCESS")
-elif user_tier == "Personal Pro (Personal Use)":
-    st.sidebar.info("👤 PERSONAL PRO ACTIVE")
-else:
-    st.sidebar.warning("🆓 FREE VERSION ACTIVE")
-
-st.sidebar.markdown("---")
-
-# --- 4. NAVIGATION MENU (SYNCED WITH DASHBOARD) ---
-menu_list = [
-    "🏠 Dashboard", 
-    "🧩 Fraction Factory", 
-    "⚡ Speed Math Drills", 
-    "📐 Shape Master", 
-    "📉 Graphing Notebook", 
-    "🕒 Time & Clock", 
-    "📑 PDF Editor & Merger"
-]
-
-# ค้นหาตำแหน่งของเมนูปัจจุบันเพื่อทำ Default Index ให้ Sidebar เลื่อนตาม
-try:
-    current_index = menu_list.index(st.session_state.menu_choice)
-except ValueError:
-    current_index = 0
-
-st.sidebar.title("🎓 MathPrepAI Workspace")
-menu = st.sidebar.radio("SELECT TOOL:", menu_list, index=current_index)
-
-# อัปเดตค่าที่เลือกจาก Sidebar กลับเข้าสู่ Session State
-st.session_state.menu_choice = menu
-
-# --- 5. ROUTING LOGIC (การแสดงผลแต่ละหน้า) ---
-
-if menu == "🏠 Dashboard":
-    st.title("Welcome to MathPrepAI Global Dashboard")
-    st.write(f"Current Access: **{user_tier}**")
-    st.markdown("---")
-
-    st.subheader("Your Toolkit")
+def validate_access(token, uid, tier):
+    if not token or not uid:
+        return False
     
-    # --- ROW 1 ---
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.info("### 🧩 Fraction Factory\nVisual fraction models with pro themes.")
-        if st.button("Launch Tool", key="btn_frac"):
-            st.session_state.menu_choice = "🧩 Fraction Factory"
-            st.rerun()
-            
-    with col2:
-        st.success("### ⚡ Speed Math\nHigh-speed arithmetic drill generator.")
-        if st.button("Launch Tool", key="btn_speed"):
-            st.session_state.menu_choice = "⚡ Speed Math Drills"
-            st.rerun()
-        
-    with col3:
-        st.warning("### 📐 Shape Master\nGeometric shapes with area calculations.")
-        if st.button("Launch Tool", key="btn_shape"):
-            st.session_state.menu_choice = "📐 Shape Master"
-            st.rerun()
+    # คำนวณ Hash เพื่อตรวจสอบว่า Token นี้ส่งมาจากเว็บเราจริงๆ หรือไม่
+    timestamp = datetime.now().strftime('%Y%m%d%H')
+    expected_token = hmac.new(
+        SECRET_KEY.encode(),
+        (str(uid) + timestamp).encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(token, expected_token)
 
-    # --- ROW 2 ---
-    row2_col1, row2_col2, row2_col3 = st.columns(3)
-    with row2_col1:
-        st.error("### 📉 Graphing\nProfessional coordinate plane plotter.")
-        if st.button("Launch Tool", key="btn_graph"):
-            st.session_state.menu_choice = "📉 Graphing Notebook"
-            st.rerun()
-        
-    with row2_col2:
-        st.info("### 🕒 Time & Clock\nHigh-fidelity analog clock generator.")
-        if st.button("Launch Tool", key="btn_clock"):
-            st.session_state.menu_choice = "🕒 Time & Clock"
-            st.rerun()
-        
-    with row2_col3:
-        st.write("### 📑 PDF Editor\nAdvanced PDF management & merging.")
-        if st.button("Launch Tool", key="btn_pdf"):
-            st.session_state.menu_choice = "📑 PDF Editor & Merger"
-            st.rerun()
+# --- 2. ฟังก์ชันตรวจสอบสิทธิ์สมาชิก ---
+def get_tier_config(tier):
+    if tier == 'pro_teacher' or tier == 'pro_seller':
+        return {
+            "is_pro": True,
+            "max_pages": 30,
+            "has_watermark": False,
+            "show_branding": True # เช่น ชื่อครู/ชื่อโรงเรียน
+        }
+    else:
+        return {
+            "is_pro": False,
+            "max_pages": 1,
+            "has_watermark": True,
+            "show_branding": False
+        }
 
-elif menu == "🧩 Fraction Factory":
-    fraction_factory.run_app()
+# --- 3. ส่วนหลักของแอป (Main Engine) ---
+def run_math_engine():
+    # ดึงค่าจาก URL ที่ WordPress ส่งมา
+    query_params = st.query_params
+    token = query_params.get("token")
+    uid = query_params.get("uid")
+    tier = query_params.get("tier", "free")
 
-elif menu == "⚡ Speed Math Drills":
-    speed_math.run_app()
+    # ตรวจสอบความปลอดภัย
+    if not validate_access(token, uid, tier):
+        st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
+        st.info("หากคุณล็อกอินแล้วแต่ยังเห็นข้อความนี้ โปรดรีเฟรชหน้า Dashboard อีกครั้ง")
+        st.stop()
 
-elif menu == "📐 Shape Master":
-    shape_master.run_app()
+    # ดึงการตั้งค่าตามระดับสมาชิก
+    config = get_tier_config(tier)
 
-elif menu == "📉 Graphing Notebook":
-    graphing_notebook.run_app()
+    # --- เริ่มแสดงผลหน้าจอ (UI) ---
+    st.title("➕ Vertical Addition Worksheet")
+    
+    if not config["is_pro"]:
+        st.warning("🔓 คุณกำลังใช้งานเวอร์ชันฟรี (ดาวน์โหลดได้ 1 หน้าและมีลายน้ำ)")
+    
+    # --- ใส่โค้ดสร้างโจทย์คณิตศาสตร์ที่ทำค้างไว้ตรงนี้ ---
+    # (ใช้ค่า config["max_pages"] และ config["has_watermark"] ในการคุม PDF)
+    
+    st.write(f"Logged in as User ID: {uid} | Tier: {tier}")
 
-elif menu == "🕒 Time & Clock":
-    clock_generator.run_app()
-
-elif menu == "📑 PDF Editor & Merger":
-    pdf_editor.run_app()
-
-# --- 6. FOOTER ---
-st.sidebar.markdown("---")
-st.sidebar.caption(f"© 2026 MathPrepAI Global | Status: {user_tier}")
+if __name__ == "__main__":
+    run_math_engine()
