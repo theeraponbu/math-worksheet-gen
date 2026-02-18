@@ -45,7 +45,7 @@ if 'access_verified' not in st.session_state:
 #    st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
 #    st.stop()
 
-user_tier = st.session_state.user_tier
+user_tier = "pro_seller"
 
 # --- 4. NAVIGATION ---
 if 'menu_choice' not in st.session_state:
