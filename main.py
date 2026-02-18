@@ -3,7 +3,7 @@ import hashlib
 import hmac
 from datetime import datetime
 
-# นำเข้าโมดูลของอาจารย์
+# นำเข้าโมดูลของอาจารย์ (มั่นใจว่าไฟล์เหล่านี้อยู่ใน GitHub เดียวกัน)
 import fraction_factory
 import speed_math
 import shape_master
@@ -13,10 +13,11 @@ import pdf_editor
 
 # --- 1. CONFIGURATION & SECURITY ---
 st.set_page_config(page_title="MathPrepAI Ultimate Pro", layout="wide")
-SECRET_KEY = "MATH_PREP_SECRET_99" # ต้องตรงกับใน WordPress Snippet
+SECRET_KEY = "MATH_PREP_SECRET_99" 
 
 def validate_access(token, uid):
     if not token or not uid: return False
+    # บังคับใช้ UTC เพื่อให้ตรงกับ gmdate ใน PHP
     timestamp = datetime.utcnow().strftime('%Y%m%d%H')
     expected_token = hmac.new(
         SECRET_KEY.encode(),
@@ -26,7 +27,6 @@ def validate_access(token, uid):
     return hmac.compare_digest(token, expected_token)
 
 # --- 2. GET ACCESS DATA FROM URL ---
-# ดึงค่าครั้งเดียวตอนโหลดแอปเพื่อป้องกัน Redirect Loop
 if 'access_verified' not in st.session_state:
     params = st.query_params
     token = params.get("token")
@@ -38,19 +38,20 @@ if 'access_verified' not in st.session_state:
         st.session_state.user_tier = tier_from_url
         st.session_state.uid = uid
     else:
-        # บรรทัดนี้จะช่วยเราแก้ปัญหาได้ครับ!
-        st.error(f"DEBUG: UID={uid}, Token_Received={token}")
-        st.write(f"Server_Time_UTC: {datetime.utcnow().strftime('%Y%m%d%H')}")
         st.session_state.access_verified = False
-        
+        # เก็บค่าไว้ดูตอน Error โดยไม่ทำให้แอป Loop
+        st.session_state.debug_msg = f"DEBUG: UID={uid}, Token={token}, Time={datetime.utcnow().strftime('%Y%m%d%H')}"
+
 # --- 3. CHECK ACCESS ---
-if not st.session_state.access_verified:
+if st.session_state.access_verified is False:
     st.error("❌ Access Denied: กรุณาเข้าใช้งานผ่านหน้า Dashboard ของ MathPrepAI.com")
+    if 'debug_msg' in st.session_state:
+        st.warning(st.session_state.debug_msg)
     st.stop()
 
-user_tier = st.session_state.user_tier
-
 # --- 4. NAVIGATION ---
+user_tier = st.session_state.user_tier
+# ป้องกันค่า Error กรณีเข้าครั้งแรกแล้วไม่มีค่า
 if 'menu_choice' not in st.session_state:
     st.session_state.menu_choice = "🏠 Dashboard"
 
@@ -59,13 +60,13 @@ menu_list = [
     "📐 Shape Master", "📉 Graphing Notebook", "🕒 Time & Clock", "📑 PDF Editor & Merger"
 ]
 
-# Sidebar สำหรับเลือกเครื่องมือ
 st.sidebar.title("🎓 MathPrepAI Workspace")
 menu = st.sidebar.radio("SELECT TOOL:", menu_list, index=menu_list.index(st.session_state.menu_choice))
 st.session_state.menu_choice = menu
 
 st.sidebar.markdown("---")
-if "pro" in user_tier:
+# เช็คคำว่า pro แบบไม่สนตัวพิมพ์เล็กใหญ่
+if "pro" in user_tier.lower():
     st.sidebar.success(f"🚀 {user_tier.upper()} ACTIVE")
 else:
     st.sidebar.warning("🆓 FREE VERSION (Limited)")
@@ -76,14 +77,13 @@ if menu == "🏠 Dashboard":
     st.write(f"Logged in User ID: **{st.session_state.uid}** | Tier: **{user_tier}**")
     st.markdown("---")
     
-    # วาดปุ่มทางลัด (เหมือนโค้ดเก่าของอาจารย์)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.info("### 🧩 Fraction Factory")
         if st.button("Launch", key="btn_frac"):
             st.session_state.menu_choice = "🧩 Fraction Factory"
             st.rerun()
-    # ... (อาจารย์สามารถก๊อปปี้ส่วน col2, col3 จากโค้ดเก่ามาใส่ต่อได้เลยครับ)
+    # อาจารย์เพิ่มปุ่ม col2, col3 ต่อได้เลยครับ
 
 elif menu == "🧩 Fraction Factory":
     fraction_factory.run_app()
